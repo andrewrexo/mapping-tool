@@ -1,5 +1,9 @@
 import { Scene, GameObjects } from 'phaser';
 import tileProperties from '$lib/tile';
+import { EventBus } from '$lib/services/event-bus';
+
+// Add this import at the top of the file
+import { debounce } from 'lodash';
 
 // Define a type for layer properties
 type Layer = {
@@ -13,7 +17,8 @@ export class Map extends Scene {
   private layers: Layer[];
   private mapSize = 10;
   private objectLayer: Layer;
-  private objectMap: (GameObjects.Image | null)[][]; // New property to track objects
+  private objectMap: (GameObjects.Image | null)[][];
+  private debouncedScaleGame: () => void; // New property for the debounced function
 
   constructor() {
     super({ key: 'map' });
@@ -34,13 +39,14 @@ export class Map extends Scene {
       }
     ];
 
-    // Store a reference to the object layer for easier access
     this.objectLayer = this.layers.find((layer) => layer.name === 'objects')!;
-
-    // Initialize the objectMap
     this.objectMap = Array(this.mapSize)
       .fill(null)
       .map(() => Array(this.mapSize).fill(null));
+
+    this.debouncedScaleGame = debounce(this.scaleGame.bind(this), 100);
+
+    EventBus.on('resize', this.debouncedScaleGame);
   }
 
   create() {
@@ -48,10 +54,26 @@ export class Map extends Scene {
     this.drawMap(mapData.ground, this.layers[0]);
     this.drawMap(mapData.objects, this.layers[1]);
 
+    // center camera and scale the game
+    this.centerCamera();
+    this.scaleGame();
+
+    // Use the debounced function for the resize event
+    this.scale.on('resize', this.debouncedScaleGame);
+  }
+
+  scaleGame() {
+    const width = Math.floor(window.innerWidth / 2) * 2;
+    const height = Math.floor(window.innerHeight / 2) * 2;
+
+    this.scale.resize(width, height);
+    this.centerCamera();
+  }
+
+  // New method to center the camera
+  centerCamera() {
     const centerX = this.getTilePosition(this.mapSize / 2, this.mapSize / 2).x;
     const centerY = this.getTilePosition(this.mapSize / 2, this.mapSize / 2).y;
-
-    // move the camera to the center of the map
     this.cameras.main.centerOn(centerX, centerY);
   }
 
@@ -109,8 +131,10 @@ export class Map extends Scene {
               this.setupAnimation(entity, tileId);
             }
 
-            entity.setInteractive(this.input.makePixelPerfect()).on('pointerdown', () => {
-              this.placeRandomObject(colIndex, rowIndex);
+            entity.setInteractive(this.input.makePixelPerfect()).on('pointerover', () => {
+              if (this.input.activePointer.leftButtonDown()) {
+                this.placeRandomObject(colIndex, rowIndex);
+              }
             });
 
             break;

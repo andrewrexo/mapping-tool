@@ -1,5 +1,6 @@
 <script module lang="ts">
   import type { Game, Scene } from 'phaser';
+  import { EventBus } from '$lib/services/event-bus';
 
   export type TPhaserRef = {
     game: Game | null;
@@ -22,6 +23,20 @@
 
     phaserRef.game = StartGame('game-container');
     mounted = true;
+
+    window.addEventListener('resize', () => {
+      const width = Math.floor(window.innerWidth / 2) * 2;
+      const height = Math.floor(window.innerHeight / 2) * 2;
+      EventBus.emit('resize', { width, height });
+    });
+
+    return () => {
+      window.removeEventListener('resize', () => {
+        const width = Math.floor(window.innerWidth / 2) * 2;
+        const height = Math.floor(window.innerHeight / 2) * 2;
+        EventBus.emit('resize', { width, height });
+      });
+    };
   });
 </script>
 
