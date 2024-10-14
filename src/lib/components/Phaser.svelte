@@ -12,11 +12,10 @@
 
   let mounted = $state(false);
 
-  let {
-    phaserRef = $bindable()
-  }: {
-    phaserRef: TPhaserRef;
-  } = $props();
+  let phaserRef: TPhaserRef = $state({
+    game: null,
+    scene: null
+  });
 
   $effect(() => {
     if (mounted) return;

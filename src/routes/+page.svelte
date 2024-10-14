@@ -1,12 +1,7 @@
 <script lang="ts">
-  import Phaser, { type TPhaserRef } from '$lib/components/Phaser.svelte';
-
-  let phaserRef: TPhaserRef = $state({
-    game: null,
-    scene: null
-  });
+  import Phaser from '$lib/components/Phaser.svelte';
 </script>
 
 <div id="app">
-  <Phaser {phaserRef} />
+  <Phaser />
 </div>
