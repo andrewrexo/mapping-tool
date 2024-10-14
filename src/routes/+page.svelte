@@ -1,2 +1,12 @@
-<h1>Welcome to SvelteKit</h1>
-<p>Visit <a href="https://kit.svelte.dev">kit.svelte.dev</a> to read the documentation</p>
+<script lang="ts">
+  import Phaser, { type TPhaserRef } from '$lib/components/Phaser.svelte';
+
+  let phaserRef: TPhaserRef = $state({
+    game: null,
+    scene: null
+  });
+</script>
+
+<div id="app">
+  <Phaser {phaserRef} />
+</div>
