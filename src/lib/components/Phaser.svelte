@@ -40,4 +40,8 @@
   });
 </script>
 
-<div id="game-container"></div>
+<div id="game-container" class=""></div>
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Pixelify+Sans:wght@400..700&display=swap');
+</style>

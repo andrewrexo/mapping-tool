@@ -47,7 +47,11 @@ export class TileSelect extends Phaser.Scene {
       .layout();
 
     tilesTab.on('pointerdown', () => this.onTabButtonClick('tiles'));
+    tilesTab.on('pointerover', () => this.onTabButtonHover(tilesTab));
+    tilesTab.on('pointerout', () => this.onTabButtonOut(tilesTab));
     objectsTab.on('pointerdown', () => this.onTabButtonClick('objects'));
+    objectsTab.on('pointerover', () => this.onTabButtonHover(objectsTab));
+    objectsTab.on('pointerout', () => this.onTabButtonOut(objectsTab));
   }
 
   createTabButton(text: string, index: number, isActive: boolean) {
@@ -72,7 +76,13 @@ export class TileSelect extends Phaser.Scene {
       width: tabWidth,
       height: tabHeight,
       background: background,
-      text: this.add.text(0, 0, text, { fontSize: 18 }),
+      text: this.add.text(0, 0, text, {
+        fontSize: 16,
+        stroke: '#000',
+        strokeThickness: 3,
+        fontFamily: 'Inter',
+        resolution: 1
+      }),
       space: { left: 10, right: 10, top: 5, bottom: 5 },
       align: 'center'
     });
@@ -477,6 +487,28 @@ export class TileSelect extends Phaser.Scene {
       if (index !== -1) {
         this.selectItemByIndex(index);
       }
+    }
+  }
+
+  onTabButtonHover(button: any) {
+    const background = button.getElement('background');
+    const isActive =
+      (button.text.text === 'Tiles' && this.currentTab === 'tiles') ||
+      (button.text.text === 'Objects' && this.currentTab === 'objects');
+
+    if (!isActive) {
+      background.setFillStyle(0x373f4a);
+    }
+  }
+
+  onTabButtonOut(button: any) {
+    const background = button.getElement('background');
+    const isActive =
+      (button.text.text === 'Tiles' && this.currentTab === 'tiles') ||
+      (button.text.text === 'Objects' && this.currentTab === 'objects');
+
+    if (!isActive) {
+      background.setFillStyle(0x2a323c);
     }
   }
 }
