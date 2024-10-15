@@ -15,6 +15,9 @@ export class TileSelect extends Phaser.Scene {
   selectedItemFrameName: string | null = null;
   currentTab: 'tiles' | 'objects' = 'tiles';
   tabButtons: any;
+  objectGridPosition: { x: number; y: number } = { x: 0, y: 140 };
+  tileGridPosition: { x: number; y: number } = { x: 0, y: 140 };
+  tabPosition: { x: number; y: number } = { x: 100, y: 288 };
 
   constructor() {
     super({ key: 'tile-select' });
@@ -249,7 +252,6 @@ export class TileSelect extends Phaser.Scene {
     this.createObjectGrid();
     this.updateGridVisibility();
 
-    // Add resize event listener
     this.scale.on('resize', this.resize, this);
   }
 
@@ -305,7 +307,6 @@ export class TileSelect extends Phaser.Scene {
       cropHeight = 32;
     }
 
-    // Handle cropping if necessary
     if (cropWidth && cropHeight) {
       sprite.setCrop(0, 0, cropWidth, cropHeight);
       sprite.setSize(64, 32);
@@ -407,7 +408,6 @@ export class TileSelect extends Phaser.Scene {
     if (sprite && sprite.frame) {
       const frameName = sprite.frame.name;
       this.selectItem(sprite);
-      // Modify this line to include the current tab information
       this.events.emit(`${type.slice(0, -1)}Selected`, { frameName, tab: this.currentTab });
     } else {
       console.error(`Invalid sprite in ${type} cell:`, cellContainer);
@@ -441,13 +441,22 @@ export class TileSelect extends Phaser.Scene {
 
     // Update the position of the components
     if (this.tabButtons) {
-      this.tabButtons.setPosition(this.game.scale.width / 2, this.game.scale.height - 289);
+      this.tabButtons.setPosition(
+        this.tabPosition.x + 10,
+        this.game.scale.height - this.tabPosition.y
+      );
     }
     if (this.tileGridTable) {
-      this.tileGridTable.setPosition(this.game.scale.width / 2, this.game.scale.height - 143);
+      this.tileGridTable.setPosition(
+        this.game.scale.width / 2,
+        this.game.scale.height - this.tileGridPosition.y
+      );
     }
     if (this.objectGridTable) {
-      this.objectGridTable.setPosition(this.game.scale.width / 2, this.game.scale.height - 140);
+      this.objectGridTable.setPosition(
+        this.game.scale.width / 2,
+        this.game.scale.height - this.objectGridPosition.y
+      );
     }
 
     // Reselect the previously selected item
