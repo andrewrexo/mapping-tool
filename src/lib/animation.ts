@@ -31,17 +31,15 @@ function createAnimationFrames(
   const frame = texture.get(tileId);
   const frameWidth = frame.width / 4;
   const frameHeight = frame.height;
-  const originalX = frame.source.texture.frames[tileId].cutX;
-  const originalY = frame.source.texture.frames[tileId].cutY;
+  const frames = frame.source.texture.frames as Record<string, { cutX: number; cutY: number }>;
+  const originalX = frames[tileId].cutX;
+  const originalY = frames[tileId].cutY;
 
-  console.log(originalX, originalY, frame.source.texture.frames[tileId]);
-
-  const frames: Phaser.Types.Animations.AnimationFrame[] = [];
+  const framesArray: Phaser.Types.Animations.AnimationFrame[] = [];
 
   for (let i = 0; i < 4; i++) {
     const frameName = `${tileId}_${i}`;
     if (!texture.has(frameName)) {
-      console.log(frameName);
       texture.add(
         `${frameName}`,
         frame.sourceIndex,
@@ -51,8 +49,8 @@ function createAnimationFrames(
         frameHeight
       );
     }
-    frames.push({ key: 'tiles', frame: frameName });
+    framesArray.push({ key: 'tiles', frame: frameName });
   }
 
-  return frames;
+  return framesArray;
 }

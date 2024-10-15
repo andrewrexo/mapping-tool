@@ -148,7 +148,7 @@ export class Map extends Scene {
             entity = this.add.sprite(worldPos.x, worldPos.y, 'tiles', tileId);
 
             if (frame && frame.width >= tileWidth * animationFrameCount) {
-              this.setupAnimation(entity, tileId);
+              this.setupAnimation(entity, tileId.toString());
             }
 
             entity
@@ -268,7 +268,7 @@ export class Map extends Scene {
 
         const frame = this.textures.get('tiles').get(parseInt(this.currentTile));
         if (frame && frame.width >= tileProperties.tileWidth * tileProperties.animationFrameCount) {
-          this.setupAnimation(existingTile, parseInt(this.currentTile));
+          this.setupAnimation(existingTile, parseInt(this.currentTile).toString());
         } else {
           existingTile.stop();
         }
