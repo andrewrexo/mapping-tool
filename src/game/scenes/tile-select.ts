@@ -312,7 +312,7 @@ export class TileSelect extends Phaser.Scene {
       sprite.setSize(64, 32);
     }
 
-    // Add a background rectangle for hover effects
+    // Add a background rectangle for hover and click effects
     const background = scene.add.rectangle(32, size / 2, 64, size, 0xffffff, 0);
     container.add(background);
     container.sendToBack(background);
@@ -358,7 +358,12 @@ export class TileSelect extends Phaser.Scene {
     }
 
     this.selectedItemFrameName = frameName;
-    this.applyPostFXToSprite(sprite);
+
+    const container = sprite.parentContainer as Phaser.GameObjects.Container;
+    if (container) {
+      const background = container.list[0] as Phaser.GameObjects.Rectangle;
+      background.setFillStyle(0xffffff, 0.3);
+    }
   }
 
   applyPostFXToSprite(sprite: Phaser.GameObjects.Sprite) {
@@ -390,11 +395,8 @@ export class TileSelect extends Phaser.Scene {
       if (cell) {
         const container = cell.getContainer();
         if (container && container instanceof Phaser.GameObjects.Container) {
-          const sprite = container.getByName('itemSprite') as Phaser.GameObjects.Sprite;
-
-          if (sprite) {
-            sprite.postFX.clear();
-          }
+          const background = container.list[0] as Phaser.GameObjects.Rectangle;
+          background.setFillStyle(0xffffff, 0);
         }
       }
     }
@@ -409,17 +411,25 @@ export class TileSelect extends Phaser.Scene {
       const frameName = sprite.frame.name;
       this.selectItem(sprite);
       this.events.emit(`${type.slice(0, -1)}Selected`, { frameName, tab: this.currentTab });
+
+      // Show the background when clicked
+      const background = cellContainer.list[0] as Phaser.GameObjects.Rectangle;
+      background.setFillStyle(0xffffff, 0.3);
     } else {
       console.error(`Invalid sprite in ${type} cell:`, cellContainer);
     }
   }
 
   onCellOver(cellContainer: any) {
-    cellContainer.list[0].setFillStyle(0xffffff, 0.3);
+    cellContainer.list[0].setFillStyle(0xffffff, 0.1);
   }
 
   onCellOut(cellContainer: any) {
-    cellContainer.list[0].setFillStyle(0xffffff, 0);
+    if (cellContainer.list[1].frame.name !== this.selectedItemFrameName) {
+      cellContainer.list[0].setFillStyle(0xffffff, 0);
+    } else {
+      cellContainer.list[0].setFillStyle(0xffffff, 0.3);
+    }
   }
 
   resize() {
