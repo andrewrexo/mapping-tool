@@ -2,6 +2,7 @@ import tile from '$lib/tile';
 import Phaser from 'phaser';
 import type GridTable from 'phaser3-rex-plugins/templates/ui/gridtable/GridTable';
 import RexUIPlugin from 'phaser3-rex-plugins/templates/ui/ui-plugin.js';
+import { createTileAnimation } from '$lib/animation';
 
 export class TileSelect extends Phaser.Scene {
   rexUI!: RexUIPlugin;
@@ -79,7 +80,6 @@ export class TileSelect extends Phaser.Scene {
   }
 
   onTabButtonClick(tabName: 'tiles' | 'objects') {
-    // Unselect the current item before switching tabs
     if (this.selectedItemFrameName) {
       const previousIndex = (
         this.currentTab === 'tiles' ? this.tileFrames : this.objectFrames
@@ -91,10 +91,8 @@ export class TileSelect extends Phaser.Scene {
     this.updateTabAppearance();
     this.updateGridVisibility();
 
-    // Add this line to emit the tab change event
     this.events.emit('tabChanged', tabName);
 
-    // Reset selection
     this.selectedItemFrameName = null;
     this.selectedItem = null;
     this.selectedItemIndex = null;
@@ -103,7 +101,6 @@ export class TileSelect extends Phaser.Scene {
   updateTabAppearance() {
     this.tabButtons.children.forEach((button: any, index: number) => {
       if (button.text) {
-        // Check if it's a button (label) and not the background
         const isActive =
           (index === 0 && this.currentTab === 'tiles') ||
           (index === 1 && this.currentTab === 'objects');
@@ -296,10 +293,14 @@ export class TileSelect extends Phaser.Scene {
     }
 
     const sprite = scene.add.sprite(32, size / 2, textureKey, frame);
-    sprite.setName('itemSprite'); // Add this line
+    sprite.setName('itemSprite');
 
-    // Now we can safely check the sprite's width
     if (type === 'tiles' && sprite.width >= 64 * 4) {
+      const animKey = createTileAnimation(scene, frame);
+      if (scene.anims.exists(animKey)) {
+        sprite.play(animKey);
+      }
+
       cropWidth = 64;
       cropHeight = 32;
     }
@@ -307,6 +308,7 @@ export class TileSelect extends Phaser.Scene {
     // Handle cropping if necessary
     if (cropWidth && cropHeight) {
       sprite.setCrop(0, 0, cropWidth, cropHeight);
+      sprite.setSize(64, 32);
     }
 
     // Add a background rectangle for hover effects
@@ -319,8 +321,8 @@ export class TileSelect extends Phaser.Scene {
 
     if (type === 'objects') {
       scale = Math.min(64 / sprite.width, 64 / sprite.height);
+      sprite.setScale(scale);
     }
-    sprite.setScale(scale);
 
     sprite.setInteractive();
     sprite.depth = sprite.y + cell.index;
