@@ -18,12 +18,18 @@ export class Map extends Scene {
   private mapSize = 10;
   private objectLayer: Layer;
   private objectMap: (GameObjects.Image | null)[][];
-  private debouncedScaleGame: () => void; // New property for the debounced function
+  private debouncedResize: () => void;
+  private currentTile: string | null = null;
+  private groundTiles: GameObjects.Sprite[][];
+  private cursors: Phaser.Types.Input.Keyboard.CursorKeys | null = null;
+  private cameraSpeed: number = 10;
+  private currentTool: 'brush' | 'eraser' | 'bucket' = 'brush';
+  private currentObject: string | null = null;
+  private currentLayer: 'tiles' | 'objects' = 'tiles';
 
   constructor() {
     super({ key: 'map' });
 
-    // Define layers with their properties
     this.layers = [
       {
         name: 'ground',
@@ -44,9 +50,17 @@ export class Map extends Scene {
       .fill(null)
       .map(() => Array(this.mapSize).fill(null));
 
-    this.debouncedScaleGame = debounce(this.scaleGame.bind(this), 100);
+    this.groundTiles = Array(this.mapSize)
+      .fill(null)
+      .map(() => Array(this.mapSize).fill(null));
 
-    EventBus.on('resize', this.debouncedScaleGame);
+    this.debouncedResize = debounce(this.resize.bind(this), 100);
+    EventBus.on('resize', this.debouncedResize);
+  }
+
+  launchNativeUI() {
+    this.scene.launch('tile-select');
+    this.scene.bringToTop('tile-select');
   }
 
   create() {
@@ -58,23 +72,50 @@ export class Map extends Scene {
     this.centerCamera();
     this.scaleGame();
 
-    // Use the debounced function for the resize event
-    this.scale.on('resize', this.debouncedScaleGame);
+    // show native UI (tile selectors)
+    this.launchNativeUI();
+
+    // this.scale.on('resize', this.debouncedResize);
+    this.scene.get('tile-select').events.on('tileSelected', this.handleTileSelected, this);
+
+    // listen for the tileSelected event
+    const tileSelectUI = this.scene.get('tile-select');
+    tileSelectUI.events.on('tileSelected', this.handleTileSelected, this);
+    tileSelectUI.events.on('objectSelected', this.handleObjectSelected, this);
+    // Add this line to listen for tab changes
+    tileSelectUI.events.on('tabChanged', this.handleTabChanged, this);
+
+    // Add this line to create cursor keys
+    this.cursors = this.input.keyboard!.createCursorKeys();
+
+    // Add this line to listen for toolSelected event
+    EventBus.on('toolSelected', this.handleToolSelected, this);
+  }
+
+  resize() {
+    this.scaleGame();
+
+    // resize ui to fill the screen
+    const tileSelectScene = this.scene.get('tile-select');
+
+    // @ts-ignore
+    tileSelectScene.resize();
   }
 
   scaleGame() {
     const width = Math.floor(window.innerWidth / 2) * 2;
-    const height = Math.floor(window.innerHeight / 2) * 2;
+    const height = Math.floor(window.innerHeight / 2) * 2 - 64;
 
     this.scale.resize(width, height);
     this.centerCamera();
   }
 
-  // New method to center the camera
   centerCamera() {
+    const cameraOffsetY = 64;
+
     const centerX = this.getTilePosition(this.mapSize / 2, this.mapSize / 2).x;
     const centerY = this.getTilePosition(this.mapSize / 2, this.mapSize / 2).y;
-    this.cameras.main.centerOn(centerX, centerY);
+    this.cameras.main.centerOn(centerX, centerY + cameraOffsetY);
   }
 
   generateMap() {
@@ -131,11 +172,20 @@ export class Map extends Scene {
               this.setupAnimation(entity, tileId);
             }
 
-            entity.setInteractive(this.input.makePixelPerfect()).on('pointerover', () => {
-              if (this.input.activePointer.leftButtonDown()) {
-                this.placeRandomObject(colIndex, rowIndex);
-              }
-            });
+            // Modify this part to use the current tool
+            entity
+              .setInteractive(this.input.makePixelPerfect())
+              .on('pointerdown', () => {
+                this.applyTool(colIndex, rowIndex);
+              })
+              .on('pointerover', () => {
+                if (this.input.activePointer.isDown) {
+                  this.applyTool(colIndex, rowIndex);
+                }
+              });
+
+            // store the ground tile in our groundTiles array
+            this.groundTiles[rowIndex][colIndex] = entity as GameObjects.Sprite;
 
             break;
           }
@@ -207,22 +257,97 @@ export class Map extends Scene {
   }
 
   update() {
-    // update ...
+    this.handleCameraMovement();
+  }
+
+  handleCameraMovement() {
+    if (!this.cursors) return;
+
+    if (this.cursors.left.isDown) {
+      this.cameras.main.scrollX -= this.cameraSpeed;
+    } else if (this.cursors.right.isDown) {
+      this.cameras.main.scrollX += this.cameraSpeed;
+    }
+
+    if (this.cursors.up.isDown) {
+      this.cameras.main.scrollY -= this.cameraSpeed;
+    } else if (this.cursors.down.isDown) {
+      this.cameras.main.scrollY += this.cameraSpeed;
+    }
   }
 
   placeRandomObject(tileX: number, tileY: number) {
+    if (this.currentTile) {
+      this.placeTile(tileX, tileY);
+    } else {
+      if (this.objectMap[tileY][tileX]) {
+        this.objectMap[tileY][tileX]!.destroy();
+        this.objectMap[tileY][tileX] = null;
+      }
+
+      const minObjectTileId = 101;
+      const maxObjectTileId = 500;
+      const randomObjectId =
+        Math.floor(Math.random() * (maxObjectTileId - minObjectTileId + 1)) + minObjectTileId;
+
+      const worldPos = this.getTilePosition(tileX, tileY);
+      const object = this.add.image(worldPos.x, worldPos.y, 'objects', randomObjectId);
+
+      object.setOrigin(0, 1);
+      object.y += 12;
+      object.x -= Math.floor(object.width / 2);
+      object.x -= this.objectLayer.renderOffset.x;
+      object.setDepth(this.objectLayer.depthOffset + object.y);
+
+      this.objectMap[tileY][tileX] = object;
+    }
+  }
+
+  handleTileSelected = ({ frameName, tab }: { frameName: string; tab: 'tiles' | 'objects' }) => {
+    console.log(`Map scene received selected tile: ${frameName} from tab: ${tab}`);
+    this.currentTile = frameName;
+    this.currentObject = null;
+    this.currentLayer = tab;
+  };
+
+  handleObjectSelected = ({ frameName, tab }: { frameName: string; tab: 'tiles' | 'objects' }) => {
+    console.log(`Map scene received selected object: ${frameName} from tab: ${tab}`);
+    this.currentObject = frameName;
+    this.currentTile = null;
+    this.currentLayer = tab;
+  };
+
+  handleTabChanged = (tab: 'tiles' | 'objects') => {
+    console.log(`Tab changed to: ${tab}`);
+    this.currentLayer = tab;
+  };
+
+  placeTile(tileX: number, tileY: number) {
+    if (this.currentTile) {
+      const existingTile = this.groundTiles[tileY][tileX];
+      if (existingTile) {
+        existingTile.setTexture('tiles', this.currentTile);
+
+        const frame = this.textures.get('tiles').get(parseInt(this.currentTile));
+        if (frame && frame.width >= tileProperties.tileWidth * tileProperties.animationFrameCount) {
+          this.setupAnimation(existingTile, parseInt(this.currentTile));
+        } else {
+          existingTile.stop();
+        }
+      }
+    } else if (this.currentObject) {
+      this.placeObject(tileX, tileY);
+    }
+  }
+
+  placeObject(tileX: number, tileY: number) {
     if (this.objectMap[tileY][tileX]) {
       this.objectMap[tileY][tileX]!.destroy();
       this.objectMap[tileY][tileX] = null;
     }
 
-    const minObjectTileId = 101;
-    const maxObjectTileId = 500;
-    const randomObjectId =
-      Math.floor(Math.random() * (maxObjectTileId - minObjectTileId + 1)) + minObjectTileId;
-
     const worldPos = this.getTilePosition(tileX, tileY);
-    const object = this.add.image(worldPos.x, worldPos.y, 'objects', randomObjectId);
+    const object = this.add.image(worldPos.x, worldPos.y, 'objects', this.currentObject!);
 
     object.setOrigin(0, 1);
     object.y += 12;
@@ -231,5 +356,82 @@ export class Map extends Scene {
     object.setDepth(this.objectLayer.depthOffset + object.y);
 
     this.objectMap[tileY][tileX] = object;
+  }
+
+  handleToolSelected = (tool: 'brush' | 'eraser' | 'bucket') => {
+    this.currentTool = tool;
+  };
+
+  applyTool(tileX: number, tileY: number) {
+    switch (this.currentTool) {
+      case 'brush':
+        if (this.currentLayer === 'tiles') {
+          this.placeTile(tileX, tileY);
+        } else {
+          this.placeObject(tileX, tileY);
+        }
+        break;
+      case 'eraser':
+        if (this.currentLayer === 'tiles') {
+          this.eraseTile(tileX, tileY);
+        } else {
+          this.eraseObject(tileX, tileY);
+        }
+        break;
+      case 'bucket':
+        if (this.currentLayer === 'tiles') {
+          this.fillArea(tileX, tileY);
+        }
+        // Note: Bucket fill doesn't make sense for objects, so we don't implement it for the objects layer
+        break;
+    }
+  }
+
+  eraseTile(tileX: number, tileY: number) {
+    const existingTile = this.groundTiles[tileY][tileX];
+    if (existingTile) {
+      existingTile.setTexture('tiles', '1'); // Assuming '1' is your default/empty tile
+      existingTile.stop(); // Stop any animations
+    }
+  }
+
+  eraseObject(tileX: number, tileY: number) {
+    if (this.objectMap[tileY][tileX]) {
+      this.objectMap[tileY][tileX]!.destroy();
+      this.objectMap[tileY][tileX] = null;
+    }
+  }
+
+  fillArea(startX: number, startY: number) {
+    if (!this.currentTile) return;
+
+    const targetTileFrame = this.groundTiles[startY][startX].frame.name;
+    const newTileFrame = this.currentTile;
+
+    if (targetTileFrame === newTileFrame) return;
+
+    const stack: [number, number][] = [[startX, startY]];
+    const visited: Set<string> = new Set();
+
+    while (stack.length > 0) {
+      const [x, y] = stack.pop()!;
+      const key = `${x},${y}`;
+
+      if (
+        x < 0 ||
+        x >= this.mapSize ||
+        y < 0 ||
+        y >= this.mapSize ||
+        visited.has(key) ||
+        this.groundTiles[y][x].frame.name !== targetTileFrame
+      ) {
+        continue;
+      }
+
+      this.placeTile(x, y);
+      visited.add(key);
+
+      stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+    }
   }
 }

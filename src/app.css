@@ -4,7 +4,7 @@
 
 @layer base {
   .content {
-    @apply bg-black;
+    @apply bg-base-100;
   }
 }
 
