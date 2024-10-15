@@ -3,6 +3,7 @@ import { Scene, GameObjects } from 'phaser';
 import tileProperties from '$lib/tile';
 import { EventBus } from '$lib/services/event-bus';
 import { createTileAnimation } from '$lib/animation';
+import { tools } from '$lib/state/tool.svelte';
 
 type Layer = {
   name: string;
@@ -21,7 +22,6 @@ export class Map extends Scene {
   private groundTiles: GameObjects.Sprite[][];
   private cursors: Phaser.Types.Input.Keyboard.CursorKeys | null = null;
   private cameraSpeed: number = 10;
-  private currentTool: 'brush' | 'eraser' | 'bucket' = 'brush';
   private currentObject: string | null = null;
   private currentLayer: 'tiles' | 'objects' = 'tiles';
   private grid: Phaser.GameObjects.Graphics | null = null;
@@ -53,7 +53,7 @@ export class Map extends Scene {
       .fill(null)
       .map(() => Array(this.mapSize).fill(null));
 
-    this.debouncedResize = debounce(this.resize.bind(this), 100);
+    this.debouncedResize = debounce(this.resize.bind(this), 75);
     EventBus.on('resize', this.debouncedResize);
   }
 
@@ -88,8 +88,6 @@ export class Map extends Scene {
     tileSelectUI.events.on('tileSelected', this.handleTileSelected, this);
     tileSelectUI.events.on('objectSelected', this.handleObjectSelected, this);
     tileSelectUI.events.on('tabChanged', this.handleTabChanged, this);
-
-    EventBus.on('toolSelected', this.handleToolSelected, this);
   }
 
   resize() {
@@ -105,7 +103,7 @@ export class Map extends Scene {
 
   scaleGame() {
     const width = Math.floor(window.innerWidth / 2) * 2;
-    const height = Math.floor(window.innerHeight / 2) * 2 - 64;
+    const height = Math.floor(window.innerHeight / 2) * 2 - 50;
 
     this.scale.resize(width, height);
     this.centerCamera();
@@ -294,12 +292,8 @@ export class Map extends Scene {
     this.objectMap[tileY][tileX] = object;
   }
 
-  handleToolSelected = (tool: 'brush' | 'eraser' | 'bucket') => {
-    this.currentTool = tool;
-  };
-
   applyTool(tileX: number, tileY: number) {
-    switch (this.currentTool) {
+    switch (tools.currentTool) {
       case 'brush':
         if (this.currentLayer === 'tiles') {
           this.placeTile(tileX, tileY);
@@ -395,19 +389,11 @@ export class Map extends Scene {
     this.grid.strokePath();
     this.grid.setDepth(1);
 
-    // Add click listeners to the grid cells
-    this.input.on('pointerdown', this.handleGridClick, this);
-    this.input.on('pointermove', this.handleGridDrag, this);
+    this.input.on('pointerdown', this.handleGridInteraction, this);
+    this.input.on('pointermove', this.handleGridInteraction, this);
   }
 
-  handleGridClick(pointer: Phaser.Input.Pointer) {
-    const { tileX, tileY } = this.getTileCoordinates(pointer.x, pointer.y);
-    if (tileX >= 0 && tileX < this.mapSize && tileY >= 0 && tileY < this.mapSize) {
-      this.applyTool(tileX, tileY);
-    }
-  }
-
-  handleGridDrag(pointer: Phaser.Input.Pointer) {
+  handleGridInteraction(pointer: Phaser.Input.Pointer) {
     if (pointer.isDown) {
       const { tileX, tileY } = this.getTileCoordinates(pointer.x, pointer.y);
       if (tileX >= 0 && tileX < this.mapSize && tileY >= 0 && tileY < this.mapSize) {
