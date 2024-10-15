@@ -2,10 +2,13 @@
   import '../app.css';
   import 'iconify-icon';
   import { SvelteToast, toast } from '@zerodevx/svelte-toast';
+  import { EventBus } from '$lib/services/event-bus';
+
   let { children } = $props();
 
   let isDrawerOpen = $state(false);
   let isSaved = $state(false);
+  let currentTool = $state('brush');
 
   const closeDrawer = () => {
     isDrawerOpen = false;
@@ -18,8 +21,8 @@
 
     isSaved = !isSaved;
 
-    toast.push('Map saved successfully!', {
-      duration: 2000
+    toast.push('<iconify-icon icon="mdi:content-save"></iconify-icon> Map saved successfully!', {
+      duration: 3000
     });
   };
 
@@ -27,6 +30,11 @@
     if (event.key === 'Escape') {
       closeDrawer();
     }
+  };
+
+  const handleToolClick = (tool: 'brush' | 'eraser' | 'bucket') => {
+    currentTool = tool;
+    EventBus.emit('toolSelected', tool);
   };
 
   $effect(() => {
@@ -42,7 +50,9 @@
   <title>Map Editor</title>
 </svelte:head>
 
-<SvelteToast />
+<div class="toast-wrap">
+  <SvelteToast />
+</div>
 
 <div class="layout">
   <header class="py-2 px-2 border-b border-neutral flex justify-between items-center">
@@ -59,6 +69,69 @@
       <iconify-icon icon="material-symbols:menu-open-rounded"></iconify-icon>
     </label>
   </header>
+
+  <div class="floating-menu">
+    <ul class="menu menu-horizontal rounded-box gap-2 p-2 shadow-lg">
+      <li>
+        <button
+          class="tooltip tooltip-bottom"
+          data-tip="Brush"
+          aria-label="Brush"
+          onclick={() => handleToolClick('brush')}
+          class:active={currentTool === 'brush'}
+        >
+          <iconify-icon icon="mdi:brush"></iconify-icon>
+        </button>
+      </li>
+      <li>
+        <button
+          class="tooltip tooltip-bottom"
+          data-tip="Eraser"
+          aria-label="Eraser"
+          onclick={() => handleToolClick('eraser')}
+          class:active={currentTool === 'eraser'}
+        >
+          <iconify-icon icon="mdi:eraser"></iconify-icon>
+        </button>
+      </li>
+      <li>
+        <button
+          class="tooltip tooltip-bottom"
+          data-tip="Paint Bucket"
+          aria-label="Paint Bucket"
+          onclick={() => handleToolClick('bucket')}
+          class:active={currentTool === 'bucket'}
+        >
+          <iconify-icon icon="mdi:format-color-fill"></iconify-icon>
+        </button>
+      </li>
+      <li>
+        <button class="tooltip tooltip-bottom" data-tip="Zoom" aria-label="Zoom">
+          <iconify-icon icon="mdi:magnify"></iconify-icon>
+        </button>
+      </li>
+      <li>
+        <button class="tooltip tooltip-bottom" data-tip="Layers" aria-label="Layers">
+          <iconify-icon icon="mdi:layers"></iconify-icon>
+        </button>
+      </li>
+      <li>
+        <button class="tooltip tooltip-bottom" data-tip="Tools" aria-label="Tools">
+          <iconify-icon icon="mdi:tools"></iconify-icon>
+        </button>
+      </li>
+      <li>
+        <button class="tooltip tooltip-bottom" data-tip="Undo" aria-label="Undo">
+          <iconify-icon icon="mdi:undo"></iconify-icon>
+        </button>
+      </li>
+      <li>
+        <button class="tooltip tooltip-bottom" data-tip="Redo" aria-label="Redo">
+          <iconify-icon icon="mdi:redo"></iconify-icon>
+        </button>
+      </li>
+    </ul>
+  </div>
 
   <div class="drawer drawer-end">
     <input id="nav-drawer" type="checkbox" class="drawer-toggle" bind:checked={isDrawerOpen} />
@@ -108,51 +181,6 @@
   <main class="content">
     {@render children()}
   </main>
-
-  <div class="floating-menu grid grid-flow-col min-w-[520px]">
-    <ul class="menu menu-horizontal bg-base-200 rounded-box gap-2 p-2 shadow-lg">
-      <li>
-        <button class="tooltip tooltip-top" data-tip="Brush" aria-label="Brush">
-          <iconify-icon icon="mdi:brush"></iconify-icon>
-        </button>
-      </li>
-      <li>
-        <button class="tooltip tooltip-top" data-tip="Eraser" aria-label="Eraser">
-          <iconify-icon icon="mdi:eraser"></iconify-icon>
-        </button>
-      </li>
-      <li>
-        <button class="tooltip tooltip-top" data-tip="Tile Picker" aria-label="Color Picker">
-          <iconify-icon icon="mdi:eyedropper"></iconify-icon>
-        </button>
-      </li>
-      <li>
-        <button class="tooltip tooltip-top" data-tip="Zoom" aria-label="Zoom">
-          <iconify-icon icon="mdi:magnify"></iconify-icon>
-        </button>
-      </li>
-      <li>
-        <button class="tooltip tooltip-top" data-tip="Layers" aria-label="Layers">
-          <iconify-icon icon="mdi:layers"></iconify-icon>
-        </button>
-      </li>
-      <li>
-        <button class="tooltip tooltip-top" data-tip="Tools" aria-label="Tools">
-          <iconify-icon icon="mdi:tools"></iconify-icon>
-        </button>
-      </li>
-      <li>
-        <button class="tooltip tooltip-top" data-tip="Undo" aria-label="Undo">
-          <iconify-icon icon="mdi:undo"></iconify-icon>
-        </button>
-      </li>
-      <li>
-        <button class="tooltip tooltip-top" data-tip="Redo" aria-label="Redo">
-          <iconify-icon icon="mdi:redo"></iconify-icon>
-        </button>
-      </li>
-    </ul>
-  </div>
 </div>
 
 <style lang="postcss">
@@ -194,23 +222,30 @@
   }
 
   .floating-menu {
-    position: absolute;
-    width: fit-content;
-    transform: translateX(-50%);
+    position: fixed;
+    top: 34px;
     left: 50%;
-    bottom: 20px;
+    transform: translate(-50%, -50%);
     z-index: 1000;
   }
 
-  .floating-menu .menu {
-    backdrop-filter: blur(10px);
+  .toast-wrap {
+    font-family: Roboto, sans-serif;
+    font-size: 1rem;
+    --toastBackground: oklch(0.313815 0.021108 254.139);
+    --toastColor: oklch(0.710396 0.015376 254.139);
+    --toastBarBackground: rgb(34 197 94);
+    --toastBorderRadius: 0.5rem;
+  }
+  .toast-wrap :global(strong) {
+    font-weight: 600;
   }
 
-  :global(.svelte-toast) {
-    @apply font-sans;
+  .toast-wrap :global(iconify-icon) {
+    @apply text-xl -mb-1 text-green-500;
   }
 
-  :global(.svelte-toast .toast) {
-    @apply bg-success text-success-content;
+  .floating-menu button.active {
+    @apply bg-primary text-primary-content;
   }
 </style>
