@@ -4,6 +4,7 @@ import tileProperties from '$lib/tile';
 import { EventBus } from '$lib/services/event-bus';
 import { createTileAnimation } from '$lib/animation';
 import { tools } from '$lib/state/tool.svelte';
+import { history, type HistoryAction } from '$lib/state/history.svelte';
 
 type Layer = {
   name: string;
@@ -25,6 +26,7 @@ export class Map extends Scene {
   private currentObject: string | null = null;
   private currentLayer: 'tiles' | 'objects' = 'tiles';
   private grid: Phaser.GameObjects.Graphics | null = null;
+  private lastAppliedTile: { x: number; y: number } | null = null;
 
   constructor() {
     super({ key: 'map' });
@@ -88,6 +90,9 @@ export class Map extends Scene {
     tileSelectUI.events.on('tileSelected', this.handleTileSelected, this);
     tileSelectUI.events.on('objectSelected', this.handleObjectSelected, this);
     tileSelectUI.events.on('tabChanged', this.handleTabChanged, this);
+
+    EventBus.on('undo', this.undo, this);
+    EventBus.on('redo', this.redo, this);
   }
 
   resize() {
@@ -260,36 +265,46 @@ export class Map extends Scene {
     if (this.currentTile) {
       const existingTile = this.groundTiles[tileY][tileX];
       if (existingTile) {
-        existingTile.setTexture('tiles', this.currentTile);
-        existingTile.setVisible(true);
-        existingTile.setAlpha(1);
+        const oldValue = existingTile.frame.name;
+        const oldAlpha = existingTile.alpha;
+        const newValue = this.currentTile;
+        const newAlpha = 1;
 
-        const frame = this.textures.get('tiles').get(parseInt(this.currentTile));
-        if (frame && frame.width >= tileProperties.tileWidth * tileProperties.animationFrameCount) {
-          this.setupAnimation(existingTile, parseInt(this.currentTile).toString());
-        } else {
-          existingTile.stop();
-        }
+        history.addAction({
+          type: 'tile',
+          x: tileX,
+          y: tileY,
+          oldValue,
+          newValue,
+          oldAlpha,
+          newAlpha,
+          layer: 0,
+          tool: tools.currentTool
+        });
+
+        this.applyTileChange(existingTile, newValue, newAlpha);
       }
-    } else if (this.currentObject) {
-      this.placeObject(tileX, tileY);
     }
   }
 
   placeObject(tileX: number, tileY: number) {
-    if (this.objectMap[tileY][tileX]) {
-      this.objectMap[tileY][tileX]!.destroy();
-      this.objectMap[tileY][tileX] = null;
+    if (this.currentObject) {
+      const oldObject = this.objectMap[tileY][tileX];
+      const oldValue = oldObject ? oldObject.frame.name : null;
+      const newValue = this.currentObject;
+
+      history.addAction({
+        type: 'object',
+        x: tileX,
+        y: tileY,
+        oldValue,
+        newValue,
+        layer: 1,
+        tool: tools.currentTool
+      });
+
+      this.applyObjectChange(tileX, tileY, newValue);
     }
-
-    const worldPos = this.getTilePosition(tileX, tileY);
-    const object = this.add.image(worldPos.x, worldPos.y, 'objects', this.currentObject!);
-
-    object.setOrigin(0.5, 1);
-    object.y += tileProperties.tileHeight / 2;
-    object.setDepth(this.objectLayer.depthOffset + worldPos.y);
-
-    this.objectMap[tileY][tileX] = object;
   }
 
   applyTool(tileX: number, tileY: number) {
@@ -318,14 +333,42 @@ export class Map extends Scene {
 
   eraseTile(tileX: number, tileY: number) {
     const existingTile = this.groundTiles[tileY][tileX];
-    if (existingTile) {
+    if (existingTile && existingTile.visible) {
+      const oldValue = existingTile.frame.name;
+      const oldAlpha = existingTile.alpha;
+
+      history.addAction({
+        type: 'tile',
+        x: tileX,
+        y: tileY,
+        oldValue,
+        newValue: null,
+        oldAlpha,
+        newAlpha: 0,
+        layer: 0,
+        tool: 'eraser'
+      });
+
       existingTile.setVisible(false);
+      existingTile.setAlpha(0);
       existingTile.stop();
     }
   }
 
   eraseObject(tileX: number, tileY: number) {
     if (this.objectMap[tileY][tileX]) {
+      const oldValue = this.objectMap[tileY][tileX]!.frame.name;
+
+      history.addAction({
+        type: 'object',
+        x: tileX,
+        y: tileY,
+        oldValue,
+        newValue: null,
+        layer: 1,
+        tool: 'eraser'
+      });
+
       this.objectMap[tileY][tileX]!.destroy();
       this.objectMap[tileY][tileX] = null;
     }
@@ -341,6 +384,7 @@ export class Map extends Scene {
 
     const stack: [number, number][] = [[startX, startY]];
     const visited: Set<string> = new Set();
+    const fillActions: HistoryAction[] = [];
 
     while (stack.length > 0) {
       const [x, y] = stack.pop()!;
@@ -357,10 +401,61 @@ export class Map extends Scene {
         continue;
       }
 
-      this.placeTile(x, y);
+      fillActions.push({
+        type: 'tile',
+        x,
+        y,
+        oldValue: this.groundTiles[y][x].frame.name,
+        newValue: newTileFrame,
+        oldAlpha: this.groundTiles[y][x].alpha,
+        newAlpha: 1,
+        layer: 0,
+        tool: 'bucket'
+      });
+
+      this.applyTileChange(this.groundTiles[y][x], newTileFrame, 1);
       visited.add(key);
 
       stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+    }
+
+    history.addAction({
+      type: 'layer',
+      x: startX,
+      y: startY,
+      oldValue: null,
+      newValue: JSON.stringify(fillActions),
+      layer: 0,
+      tool: 'bucket'
+    });
+  }
+
+  applyTileChange(tile: Phaser.GameObjects.Sprite, newValue: string, alpha: number) {
+    tile.setTexture('tiles', newValue);
+    tile.setVisible(true);
+    tile.setAlpha(alpha);
+
+    const frame = this.textures.get('tiles').get(parseInt(newValue));
+    if (frame && frame.width >= tileProperties.tileWidth * tileProperties.animationFrameCount) {
+      this.setupAnimation(tile, parseInt(newValue).toString());
+    } else {
+      tile.stop();
+    }
+  }
+
+  applyObjectChange(tileX: number, tileY: number, newValue: string | null) {
+    if (this.objectMap[tileY][tileX]) {
+      this.objectMap[tileY][tileX]!.destroy();
+      this.objectMap[tileY][tileX] = null;
+    }
+
+    if (newValue) {
+      const worldPos = this.getTilePosition(tileX, tileY);
+      const object = this.add.image(worldPos.x, worldPos.y, 'objects', newValue);
+      object.setOrigin(0.5, 1);
+      object.y += tileProperties.tileHeight / 2;
+      object.setDepth(this.objectLayer.depthOffset + worldPos.y);
+      this.objectMap[tileY][tileX] = object;
     }
   }
 
@@ -396,9 +491,20 @@ export class Map extends Scene {
   handleGridInteraction(pointer: Phaser.Input.Pointer) {
     if (pointer.isDown) {
       const { tileX, tileY } = this.getTileCoordinates(pointer.x, pointer.y);
-      if (tileX >= 0 && tileX < this.mapSize && tileY >= 0 && tileY < this.mapSize) {
+      if (
+        tileX >= 0 &&
+        tileX < this.mapSize &&
+        tileY >= 0 &&
+        tileY < this.mapSize &&
+        (!this.lastAppliedTile ||
+          this.lastAppliedTile.x !== tileX ||
+          this.lastAppliedTile.y !== tileY)
+      ) {
         this.applyTool(tileX, tileY);
+        this.lastAppliedTile = { x: tileX, y: tileY };
       }
+    } else {
+      this.lastAppliedTile = null;
     }
   }
 
@@ -415,5 +521,48 @@ export class Map extends Scene {
         2
     );
     return { tileX, tileY };
+  }
+
+  undo() {
+    const action = history.undo();
+    if (action) {
+      this.applyHistoryAction(action, true);
+    }
+  }
+
+  redo() {
+    const action = history.redo();
+    if (action) {
+      this.applyHistoryAction(action, false);
+    }
+  }
+
+  applyHistoryAction(action: HistoryAction, isUndo: boolean) {
+    const { type, x, y, oldValue, newValue, oldAlpha, newAlpha } = action;
+    const valueToApply = isUndo ? oldValue : newValue;
+    const alphaToApply = isUndo ? oldAlpha : newAlpha;
+
+    if (type === 'tile') {
+      const tile = this.groundTiles[y][x];
+      if (valueToApply) {
+        this.applyTileChange(tile, valueToApply, alphaToApply ?? 1);
+      } else {
+        tile.setVisible(false);
+        tile.setAlpha(0);
+        tile.stop();
+      }
+    } else if (type === 'object') {
+      this.applyObjectChange(x, y, valueToApply);
+    } else if (type === 'layer') {
+      const actions: HistoryAction[] = JSON.parse(valueToApply || '[]');
+      actions.forEach((action) => {
+        this.applyHistoryAction(action, isUndo);
+      });
+    }
+  }
+
+  shutdown() {
+    EventBus.off('undo', this.undo, this);
+    EventBus.off('redo', this.redo, this);
   }
 }

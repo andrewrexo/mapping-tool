@@ -1,6 +1,7 @@
 <script lang="ts">
   import { EventBus } from '$lib/services/event-bus';
-  import { createHotkeyListener } from '$lib/services/hotkey-listener';
+  import { createHotkeyListener, undo, redo } from '$lib/services/hotkey-listener';
+  import { history } from '$lib/state/history.svelte';
   import { tools } from '$lib/state/tool.svelte';
 
   let menuElement: HTMLUListElement;
@@ -80,12 +81,12 @@
     </button>
   </li>
   <li>
-    <button class="tooltip tooltip-left" data-tip="Undo" aria-label="Undo">
+    <button class="tooltip tooltip-left" data-tip="Undo" aria-label="Undo" onclick={() => undo()}>
       <iconify-icon icon="mdi:undo"></iconify-icon>
     </button>
   </li>
   <li>
-    <button class="tooltip tooltip-left" data-tip="Redo" aria-label="Redo">
+    <button class="tooltip tooltip-left" data-tip="Redo" aria-label="Redo" onclick={() => redo()}>
       <iconify-icon icon="mdi:redo"></iconify-icon>
     </button>
   </li>

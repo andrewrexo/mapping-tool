@@ -4,11 +4,33 @@ import { tools } from '$lib/state/tool.svelte';
 
 type HotkeyCallback = (event: KeyboardEvent) => void;
 
+export const redo = () => {
+  EventBus.emit('redo');
+};
+
+export const undo = () => {
+  EventBus.emit('undo');
+};
+
 class HotkeyListener {
   private hotkeys: Map<string, HotkeyCallback> = new Map([
     ['1', (event) => tools.setTool('brush')],
     ['2', (event) => tools.setTool('eraser')],
-    ['3', (event) => tools.setTool('bucket')]
+    ['3', (event) => tools.setTool('bucket')],
+    [
+      'z',
+      (event) => {
+        if (event.ctrlKey || event.metaKey) {
+          if (event.shiftKey) {
+            redo();
+          } else {
+            undo();
+          }
+        }
+
+        event.preventDefault();
+      }
+    ]
   ]);
 
   constructor() {
