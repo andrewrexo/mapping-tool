@@ -439,7 +439,14 @@ export class Map extends Scene {
 
     const stack: [number, number][] = [[startX, startY]];
     const visited: Set<string> = new Set();
-    const fillActions: HistoryAction[] = [];
+    const fillChanges: {
+      x: number;
+      y: number;
+      oldValue: string;
+      newValue: string;
+      oldAlpha: number;
+      newAlpha: number;
+    }[] = [];
 
     while (stack.length > 0) {
       const [x, y] = stack.pop()!;
@@ -456,16 +463,13 @@ export class Map extends Scene {
         continue;
       }
 
-      fillActions.push({
-        type: 'tile',
+      fillChanges.push({
         x,
         y,
         oldValue: this.groundTiles[y][x].frame.name,
         newValue: newTileFrame,
         oldAlpha: this.groundTiles[y][x].alpha,
-        newAlpha: 1,
-        layer: 0,
-        tool: 'bucket'
+        newAlpha: 1
       });
 
       this.applyTileChange(this.groundTiles[y][x], newTileFrame, 1);
@@ -475,12 +479,8 @@ export class Map extends Scene {
     }
 
     history.addAction({
-      type: 'layer',
-      x: startX,
-      y: startY,
-      oldValue: null,
-      newValue: JSON.stringify(fillActions),
-      layer: 0,
+      type: 'fill',
+      changes: fillChanges,
       tool: 'bucket'
     });
   }
@@ -504,19 +504,19 @@ export class Map extends Scene {
     }
   }
 
-  applyObjectChange(tileX: number, tileY: number, newValue: string | null) {
-    if (this.objectMap[tileY][tileX]) {
-      this.objectMap[tileY][tileX]!.destroy();
-      this.objectMap[tileY][tileX] = null;
+  applyObjectChange(x: number, y: number, valueToApply: string | null) {
+    if (this.objectMap[y][x]) {
+      this.objectMap[y][x]!.destroy();
+      this.objectMap[y][x] = null;
     }
 
-    if (newValue) {
-      const worldPos = this.getTilePosition(tileX, tileY);
-      const object = this.add.image(worldPos.x, worldPos.y, 'objects', newValue);
+    if (valueToApply) {
+      const worldPos = this.getTilePosition(x, y);
+      const object = this.add.image(worldPos.x, worldPos.y, 'objects', valueToApply);
       object.setOrigin(0.5, 1);
       object.y += tileProperties.tileHeight / 2;
       object.setDepth(this.objectLayer.depthOffset + worldPos.y);
-      this.objectMap[tileY][tileX] = object;
+      this.objectMap[y][x] = object;
     }
   }
 
@@ -599,26 +599,35 @@ export class Map extends Scene {
   }
 
   applyHistoryAction(action: HistoryAction, isUndo: boolean) {
-    const { type, x, y, oldValue, newValue, oldAlpha, newAlpha } = action;
-    const valueToApply = isUndo ? oldValue : newValue;
-    const alphaToApply = isUndo ? oldAlpha : newAlpha;
-
-    if (type === 'tile') {
-      const tile = this.groundTiles[y][x];
-      if (valueToApply) {
-        this.applyTileChange(tile, valueToApply, alphaToApply ?? 1);
-      } else {
-        tile.setVisible(false);
-        tile.setAlpha(0);
-        tile.stop();
+    if (action.type === 'fill') {
+      const changes = action.changes;
+      if (changes) {
+        changes.forEach((change) => {
+          const tile = this.groundTiles[change.y][change.x];
+          const valueToApply = isUndo ? change.oldValue : change.newValue;
+          const alphaToApply = isUndo ? change.oldAlpha : change.newAlpha;
+          this.applyTileChange(tile, valueToApply, alphaToApply);
+        });
       }
-    } else if (type === 'object') {
-      this.applyObjectChange(x, y, valueToApply);
-    } else if (type === 'layer') {
-      const actions: HistoryAction[] = JSON.parse(valueToApply || '[]');
-      actions.forEach((action) => {
-        this.applyHistoryAction(action, isUndo);
-      });
+    } else {
+      const { type, x, y, oldValue, newValue, oldAlpha, newAlpha } = action;
+      if (typeof x === 'number' && typeof y === 'number') {
+        const valueToApply = isUndo ? oldValue : newValue;
+        const alphaToApply = isUndo ? oldAlpha : newAlpha;
+
+        if (type === 'tile') {
+          const tile = this.groundTiles[y][x];
+          if (valueToApply) {
+            this.applyTileChange(tile, valueToApply, alphaToApply ?? 1);
+          } else {
+            tile.setVisible(false);
+            tile.setAlpha(0);
+            tile.stop();
+          }
+        } else if (type === 'object') {
+          this.applyObjectChange(x, y, valueToApply ?? null);
+        }
+      }
     }
   }
 

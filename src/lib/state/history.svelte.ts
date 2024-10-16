@@ -1,15 +1,23 @@
 import { create } from 'lodash';
 
 export type HistoryAction = {
-  type: 'tile' | 'object' | 'layer';
-  x: number;
-  y: number;
-  oldValue: string | null;
-  newValue: string | null;
+  type: 'tile' | 'object' | 'fill';
+  x?: number;
+  y?: number;
+  oldValue?: string | null;
+  newValue?: string | null;
   oldAlpha?: number;
   newAlpha?: number;
   layer?: number;
   tool?: string;
+  changes?: {
+    x: number;
+    y: number;
+    oldValue: string;
+    newValue: string;
+    oldAlpha: number;
+    newAlpha: number;
+  }[];
 };
 
 function createHistoryState() {
@@ -21,19 +29,17 @@ function createHistoryState() {
     future = [];
   }
 
-  function undo() {
+  function undo(): HistoryAction | null {
     if (past.length === 0) return null;
-    const action = past[past.length - 1];
-    past = past.slice(0, -1);
+    const action = past.pop()!;
     future = [action, ...future];
     return action;
   }
 
-  function redo() {
+  function redo(): HistoryAction | null {
     if (future.length === 0) return null;
-    const action = future[0];
+    const action = future.shift()!;
     past = [...past, action];
-    future = future.slice(1);
     return action;
   }
 
