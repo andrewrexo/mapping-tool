@@ -66,21 +66,6 @@
     </button>
   </li>
   <li>
-    <button class="tooltip tooltip-left" data-tip="Zoom" aria-label="Zoom">
-      <iconify-icon icon="mdi:magnify"></iconify-icon>
-    </button>
-  </li>
-  <li>
-    <button class="tooltip tooltip-left" data-tip="Layers" aria-label="Layers">
-      <iconify-icon icon="mdi:layers"></iconify-icon>
-    </button>
-  </li>
-  <li>
-    <button class="tooltip tooltip-left" data-tip="Tools" aria-label="Tools">
-      <iconify-icon icon="mdi:tools"></iconify-icon>
-    </button>
-  </li>
-  <li>
     <button class="tooltip tooltip-left" data-tip="Undo" aria-label="Undo" onclick={() => undo()}>
       <iconify-icon icon="mdi:undo"></iconify-icon>
     </button>
