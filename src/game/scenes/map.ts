@@ -5,6 +5,7 @@ import { EventBus } from '$lib/services/event-bus';
 import { createTileAnimation } from '$lib/animation';
 import { tools } from '$lib/state/tool.svelte';
 import { history, type HistoryAction } from '$lib/state/history.svelte';
+import { GlobalAnimationManager } from '$lib/services/animation-manager';
 
 type Layer = {
   name: string;
@@ -27,9 +28,11 @@ export class Map extends Scene {
   private currentLayer: 'tiles' | 'objects' = 'tiles';
   private grid: Phaser.GameObjects.Graphics | null = null;
   private lastAppliedTile: { x: number; y: number } | null = null;
+  private animationManager: GlobalAnimationManager;
 
   constructor() {
     super({ key: 'map' });
+    this.animationManager = new GlobalAnimationManager(1000);
 
     this.layers = [
       {
@@ -59,29 +62,17 @@ export class Map extends Scene {
     EventBus.on('resize', this.debouncedResize);
   }
 
-  launchNativeUI() {
-    this.scene.launch('tile-select');
-    this.scene.bringToTop('tile-select');
-  }
-
   create() {
-    // initialize  ground tiles with a transparent sprite
-    for (let y = 0; y < this.mapSize; y++) {
-      for (let x = 0; x < this.mapSize; x++) {
-        const worldPos = this.getTilePosition(x, y);
-        this.groundTiles[y][x] = this.add.sprite(worldPos.x, worldPos.y, 'tiles', '101');
-        this.groundTiles[y][x].setOrigin(0.5, 0.5);
-        this.groundTiles[y][x].setAlpha(0);
-      }
-    }
+    // Initialize empty ground tiles
+    this.initializeEmptyMap();
 
     this.drawGrid();
 
-    // center camera and scale the game
+    // Center camera and scale the game
     this.centerCamera();
     this.scaleGame();
 
-    // show native UI (tile selectors)
+    // Show native UI (tile selectors)
     this.launchNativeUI();
 
     this.cursors = this.input.keyboard!.createCursorKeys();
@@ -93,6 +84,39 @@ export class Map extends Scene {
 
     EventBus.on('undo', this.undo, this);
     EventBus.on('redo', this.redo, this);
+  }
+
+  initializeEmptyMap() {
+    // Create animations for all possible animated tiles
+    for (let i = 200; i <= 1200; i += 100) {
+      createTileAnimation(this, i.toString());
+    }
+
+    for (let y = 0; y < this.mapSize; y++) {
+      for (let x = 0; x < this.mapSize; x++) {
+        const worldPos = this.getTilePosition(x, y);
+        const tile = this.add.sprite(worldPos.x, worldPos.y, 'tiles', '101');
+        tile.setOrigin(0.5, 0.5);
+        tile.setAlpha(0);
+        this.groundTiles[y][x] = tile;
+
+        tile
+          .setInteractive(this.input.makePixelPerfect())
+          .on('pointerdown', () => {
+            this.applyTool(x, y);
+          })
+          .on('pointerover', () => {
+            if (this.input.activePointer.isDown) {
+              this.applyTool(x, y);
+            }
+          });
+      }
+    }
+  }
+
+  launchNativeUI() {
+    this.scene.launch('tile-select');
+    this.scene.bringToTop('tile-select');
   }
 
   resize() {
@@ -195,8 +219,23 @@ export class Map extends Scene {
     tile.play(animKey);
   }
 
-  update() {
+  update(time: number, delta: number) {
     this.handleCameraMovement();
+    this.animationManager.update(delta);
+
+    // Update all animated tiles
+    this.groundTiles.forEach((row) => {
+      row.forEach((tile) => {
+        if (tile.anims.isPlaying) {
+          const progress = this.animationManager.getProgress();
+          const totalFrames = tile.anims.getTotalFrames();
+          const currentFrame = Math.floor(progress * totalFrames);
+          if (tile.anims.currentAnim) {
+            tile.setFrame(tile.anims.currentAnim.frames[currentFrame].frame.name);
+          }
+        }
+      });
+    });
   }
 
   handleCameraMovement() {
@@ -244,7 +283,8 @@ export class Map extends Scene {
 
   handleTileSelected = ({ frameName, tab }: { frameName: string; tab: 'tiles' | 'objects' }) => {
     console.log(`Map scene received selected tile: ${frameName} from tab: ${tab}`);
-    this.currentTile = frameName;
+    // Extract the base tile ID from the frame name (e.g., '396_1' -> '396')
+    this.currentTile = frameName.split('_')[0];
     this.currentObject = null;
     this.currentLayer = tab;
   };
@@ -431,15 +471,21 @@ export class Map extends Scene {
   }
 
   applyTileChange(tile: Phaser.GameObjects.Sprite, newValue: string, alpha: number) {
-    tile.setTexture('tiles', newValue);
+    const baseTileId = newValue.split('_')[0]; // Extract base tile ID
+    tile.setTexture('tiles', baseTileId);
     tile.setVisible(true);
     tile.setAlpha(alpha);
 
-    const frame = this.textures.get('tiles').get(parseInt(newValue));
+    const frame = this.textures.get('tiles').get(parseInt(baseTileId));
     if (frame && frame.width >= tileProperties.tileWidth * tileProperties.animationFrameCount) {
-      this.setupAnimation(tile, parseInt(newValue).toString());
+      const animKey = createTileAnimation(this, baseTileId);
+      if (this.anims.exists(animKey)) {
+        tile.play(animKey);
+        // Don't pause the animation
+      }
     } else {
       tile.stop();
+      tile.setFrame(baseTileId);
     }
   }
 

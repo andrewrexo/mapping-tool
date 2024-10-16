@@ -2,14 +2,15 @@ import Phaser from 'phaser';
 import tileProperties from '$lib/tile';
 
 export function createTileAnimation(scene: Phaser.Scene, tileId: string) {
-  const animKey = `tile-anim-${tileId}`;
+  const baseTileId = tileId.split('_')[0];
+  const animKey = `anim_${baseTileId}`;
 
   if (!scene.anims.exists(animKey)) {
     const texture = scene.textures.get('tiles');
-    const frame = texture.get(tileId);
+    const frame = texture.get(baseTileId);
 
     if (frame && frame.width >= tileProperties.tileWidth * tileProperties.animationFrameCount) {
-      const frames = createAnimationFrames(scene, tileId);
+      const frames = createAnimationFrames(scene, baseTileId);
 
       scene.anims.create({
         key: animKey,
