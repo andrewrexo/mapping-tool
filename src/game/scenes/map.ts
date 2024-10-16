@@ -304,10 +304,19 @@ export class Map extends Scene {
   placeTile(tileX: number, tileY: number) {
     if (this.currentTile) {
       const existingTile = this.groundTiles[tileY][tileX];
-      if (existingTile) {
-        const oldValue = existingTile.frame.name;
+      const currentFrame = existingTile.frame.name;
+      const newFrame = this.currentTile;
+
+      if (currentFrame.split('_')[0] === newFrame.split('_')[0]) {
+        return;
+      }
+
+      console.log(`Placing tile ${newFrame} at ${tileX}, ${tileY}`);
+
+      if (existingTile.frame) {
+        const oldValue = currentFrame;
         const oldAlpha = existingTile.alpha;
-        const newValue = this.currentTile;
+        const newValue = newFrame;
         const newAlpha = 1;
 
         history.addAction({
@@ -332,6 +341,12 @@ export class Map extends Scene {
       const oldObject = this.objectMap[tileY][tileX];
       const oldValue = oldObject ? oldObject.frame.name : null;
       const newValue = this.currentObject;
+
+      if (oldValue && oldValue.split('_')[0] === newValue.split('_')[0]) {
+        return;
+      }
+
+      console.log(`Placing object ${newValue} at ${tileX}, ${tileY}`);
 
       history.addAction({
         type: 'object',
