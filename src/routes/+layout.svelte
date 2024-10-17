@@ -1,13 +1,17 @@
 <script lang="ts">
   import '../app.css';
   import 'iconify-icon';
-  import { SvelteToast, toast } from '@zerodevx/svelte-toast';
-  import ToolList from '$lib/components/tool-list.svelte';
+  import ToolDock from '$lib/components/tool-dock.svelte';
+  import HistoryBrowser from '$lib/components/history-browser.svelte';
+  import { Toast, Button } from 'svelte-5-ui-lib';
+  import { fly } from 'svelte/transition';
+  import { cubicInOut } from 'svelte/easing';
 
   let { children } = $props();
 
   let isDrawerOpen = $state(false);
   let isSaved = $state(false);
+  let isModalOpen = $state(false);
 
   const closeDrawer = () => {
     isDrawerOpen = false;
@@ -19,10 +23,7 @@
     }
 
     isSaved = !isSaved;
-
-    toast.push('<iconify-icon icon="mdi:content-save"></iconify-icon> Map saved successfully!', {
-      duration: 3000
-    });
+    isModalOpen = true;
   };
 
   const handleKeydown = (event: KeyboardEvent) => {
@@ -30,6 +31,14 @@
       closeDrawer();
     }
   };
+
+  $effect(() => {
+    if (isSaved) {
+      setTimeout(() => {
+        isModalOpen = false;
+      }, 1500);
+    }
+  });
 
   $effect(() => {
     window.addEventListener('keydown', handleKeydown);
@@ -44,24 +53,30 @@
   <title>Map Editor</title>
 </svelte:head>
 
-<div class="toast-wrap">
-  <SvelteToast />
-</div>
+{#snippet toastIcon()}
+  <iconify-icon icon="mdi:content-save"></iconify-icon>
+{/snippet}
 
 <div class="layout">
   <header class="py-2 px-2 border-b border-neutral flex justify-between items-center">
-    <div class="flex items-center gap-2">
-      <button class="btn btn-neutral btn-sm flex items-center gap-2" onclick={handleTitleClick}>
+    <div class="flex items-center justify-center gap-8">
+      <Button pill={true} class="gap-2" color="gray" onclick={handleTitleClick}>
         <iconify-icon icon="mdi:content-save"></iconify-icon>
         Untitled Map
-      </button>
+      </Button>
+      <Toast
+        bind:toastStatus={isModalOpen}
+        icon={toastIcon}
+        color="gray"
+        baseClass="p-2 z-10 absolute left-2 top-16 bg-neutral text-neutral-content"
+        transition={fly}
+        dismissable={false}
+        params={{ duration: 500, easing: cubicInOut, x: 50 }}
+      >
+        <b>Untitled Map</b> has been saved
+      </Toast>
     </div>
-    <label
-      for="nav-drawer"
-      class="tooltip tooltip-bottom btn btn-neutral btn-sm flex items-center gap-2"
-    >
-      <iconify-icon icon="material-symbols:menu-open-rounded"></iconify-icon>
-    </label>
+    <HistoryBrowser />
   </header>
 
   <div class="drawer drawer-end">
@@ -109,8 +124,7 @@
     </div>
   </div>
 
-  <ToolList />
-
+  <ToolDock />
   <main class="content">
     {@render children()}
   </main>
@@ -147,17 +161,5 @@
     display: flex;
     justify-content: center;
     align-items: center;
-  }
-
-  .toast-wrap {
-    font-family: Roboto, sans-serif;
-    font-size: 1rem;
-    --toastBackground: oklch(0.313815 0.021108 254.139);
-    --toastColor: oklch(0.710396 0.015376 254.139);
-    --toastBarBackground: rgb(34 197 94);
-    --toastBorderRadius: 0.5rem;
-  }
-  .toast-wrap :global(strong) {
-    font-weight: 600;
   }
 </style>

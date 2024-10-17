@@ -6,6 +6,10 @@
   .content {
     @apply bg-base-100;
   }
+
+  .draggable {
+    @apply absolute cursor-move;
+  }
 }
 
 iconify-icon {
