@@ -6,6 +6,7 @@ import { createTileAnimation } from '$lib/animation';
 import { tools } from '$lib/state/tool.svelte';
 import { history, type HistoryAction } from '$lib/state/history.svelte';
 import { GlobalAnimationManager } from '$lib/services/animation-manager';
+import { saveMap } from '$lib/map';
 
 type Layer = {
   name: string;
@@ -83,6 +84,14 @@ export class Map extends Scene {
     EventBus.on('undo', this.undo, this);
     EventBus.on('redo', this.redo, this);
     EventBus.on('batchUndo', this.handleBatchUndo, this);
+    EventBus.on('exportMap', this.exportMap.bind(this));
+  }
+
+  exportMap() {
+    saveMap(this.mapSize, [
+      this.groundTiles.filter(Boolean) as Phaser.GameObjects.Image[][],
+      this.objectMap.filter(Boolean) as Phaser.GameObjects.Image[][]
+    ]);
   }
 
   initializeEmptyMap() {

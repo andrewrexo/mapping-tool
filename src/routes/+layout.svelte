@@ -6,6 +6,7 @@
   import { Toast, Button } from 'svelte-5-ui-lib';
   import { fly } from 'svelte/transition';
   import { cubicInOut } from 'svelte/easing';
+  import { EventBus } from '$lib/services/event-bus';
 
   let { children } = $props();
 
@@ -21,6 +22,8 @@
     if (isSaved) {
       return;
     }
+
+    EventBus.emit('exportMap');
 
     isSaved = !isSaved;
     isModalOpen = true;
