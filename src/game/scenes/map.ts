@@ -389,10 +389,12 @@ export class Map extends Scene {
 
   eraseTile(tileX: number, tileY: number) {
     const existingTile = this.groundTiles[tileY][tileX];
-    if (existingTile && existingTile.visible) {
-      const oldValue = existingTile.frame.name;
-      const oldAlpha = existingTile.alpha;
+    const oldValue = existingTile.frame.name;
+    const oldAlpha = existingTile.alpha;
 
+    if (!existingTile) return;
+
+    if (existingTile.visible && oldAlpha > 0) {
       history.addAction({
         type: 'tile',
         x: tileX,
