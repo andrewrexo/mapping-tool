@@ -138,7 +138,7 @@ export class Map extends Scene {
   }
 
   centerCamera() {
-    const cameraOffsetY = 64;
+    const cameraOffsetY = 128;
 
     const centerX = this.getTilePosition(this.mapSize / 2, this.mapSize / 2).x;
     const centerY = this.getTilePosition(this.mapSize / 2, this.mapSize / 2).y;
@@ -661,7 +661,7 @@ export class Map extends Scene {
       // Restore the old tile value
       this.applyTileChange(
         this.groundTiles[action.y][action.x],
-        action.oldValue,
+        action.oldValue ?? '',
         action.oldAlpha ?? 1
       );
     }
