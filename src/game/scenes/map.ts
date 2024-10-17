@@ -19,7 +19,6 @@ export class Map extends Scene {
   private mapSize = 15;
   private objectLayer: Layer;
   private objectMap: (GameObjects.Image | null)[][];
-  private debouncedResize: () => void;
   private currentTile: string | null = null;
   private groundTiles: GameObjects.Sprite[][];
   private cursors: Phaser.Types.Input.Keyboard.CursorKeys | null = null;
@@ -58,8 +57,7 @@ export class Map extends Scene {
       .fill(null)
       .map(() => Array(this.mapSize).fill(null));
 
-    this.debouncedResize = debounce(this.resize.bind(this), 75);
-    EventBus.on('resize', this.debouncedResize);
+    EventBus.on('resize', this.resize.bind(this));
   }
 
   create() {
@@ -306,18 +304,20 @@ export class Map extends Scene {
       const existingTile = this.groundTiles[tileY][tileX];
       const currentFrame = existingTile.frame.name;
       const newFrame = this.currentTile;
+      const oldAlpha = existingTile.alpha;
+      const newAlpha = 1;
 
       if (currentFrame.split('_')[0] === newFrame.split('_')[0]) {
-        return;
+        if (oldAlpha === newAlpha) {
+          return;
+        }
       }
 
       console.log(`Placing tile ${newFrame} at ${tileX}, ${tileY}`);
 
       if (existingTile.frame) {
         const oldValue = currentFrame;
-        const oldAlpha = existingTile.alpha;
         const newValue = newFrame;
-        const newAlpha = 1;
 
         history.addAction({
           type: 'tile',
