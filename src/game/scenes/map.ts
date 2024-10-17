@@ -65,8 +65,12 @@ export class Map extends Scene {
 
   create() {
     // Initialize empty ground tiles
-    this.initializeEmptyMap();
+    // this.initializeEmptyMap();
 
+    const mapData = this.cache.json.get('map_data');
+
+    this.drawMap(mapData.layers[0].tiles, this.layers[0]);
+    this.drawMap(mapData.layers[1].tiles, this.layers[1]);
     this.drawGrid();
 
     // Center camera and scale the game
@@ -133,6 +137,10 @@ export class Map extends Scene {
       }
     }
 
+    this.initializePreviewSprites();
+  }
+
+  initializePreviewSprites() {
     const centerPos = this.getTilePosition(0, 0);
     this.previewTile = this.add.sprite(centerPos.x, centerPos.y, 'tiles', '101');
     this.previewTile.setVisible(false);
@@ -184,7 +192,7 @@ export class Map extends Scene {
     return new Phaser.Math.Vector2(x, y);
   }
 
-  drawMap(map: number[][], layer: Layer) {
+  drawMap(map: any[][], layer: Layer) {
     const { tileWidth, animationFrameCount } = tileProperties;
     const mapWidth = map[0].length;
     const mapHeight = map.length;
@@ -193,21 +201,21 @@ export class Map extends Scene {
       for (let colIndex = 0; colIndex < mapWidth; colIndex++) {
         const tileId = map[rowIndex][colIndex];
 
+        if (tileId === null || tileId.frame === 0) {
+          continue;
+        }
+
         const worldPos = this.getTilePosition(colIndex, rowIndex);
-
-        // skip render if tileId is 0 (empty tile)
-        if (tileId === 0) continue;
-
-        const frame = this.textures.get(layer.texture).get(tileId);
+        const frame = this.textures.get(layer.texture).get(tileId.frame);
 
         let entity;
 
         switch (layer.name) {
           case 'ground': {
-            entity = this.add.sprite(worldPos.x, worldPos.y, 'tiles', tileId);
+            entity = this.add.sprite(worldPos.x, worldPos.y, 'tiles', tileId.frame);
 
             if (frame && frame.width >= tileWidth * animationFrameCount) {
-              this.setupAnimation(entity, tileId.toString());
+              this.setupAnimation(entity, tileId.frame);
             }
 
             entity
@@ -218,6 +226,8 @@ export class Map extends Scene {
               .on('pointerover', () => {
                 if (this.input.activePointer.isDown) {
                   this.applyTool(colIndex, rowIndex);
+                } else {
+                  this.showPreview(colIndex, rowIndex);
                 }
               })
               .on('pointerout', () => {
@@ -230,7 +240,7 @@ export class Map extends Scene {
             break;
           }
           case 'objects': {
-            entity = this.add.image(worldPos.x, worldPos.y, 'objects', tileId);
+            entity = this.add.image(worldPos.x, worldPos.y, 'objects', tileId.frame);
             entity.setOrigin(0, 1);
 
             entity.setPosition(
@@ -238,7 +248,7 @@ export class Map extends Scene {
               worldPos.y + 12
             );
 
-            entity.setDepth(layer.depthOffset + entity.y);
+            entity.setDepth(layer.depthOffset + worldPos.y);
 
             // Store the object in our objectMap
             this.objectMap[rowIndex][colIndex] = entity as GameObjects.Image;
@@ -248,6 +258,8 @@ export class Map extends Scene {
         }
       }
     }
+
+    this.initializePreviewSprites();
   }
 
   setupAnimation(tile: Phaser.GameObjects.Sprite, tileId: string) {
@@ -757,7 +769,7 @@ export class Map extends Scene {
         worldPos.x - Math.floor(this.previewObject!.width / 2) - this.objectLayer.renderOffset.x,
         worldPos.y + 12
       );
-      this.previewObject!.setDepth(this.objectLayer.depthOffset + worldPos.y - 1);
+      this.previewObject!.setDepth(this.objectLayer.depthOffset + worldPos.y + 10000);
 
       if (this.previewTile) {
         this.previewTile.setVisible(false);

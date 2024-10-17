@@ -8,6 +8,8 @@ export class Load extends Scene {
   preload() {
     this.load.multiatlas('tiles', 'map-tiles.json');
     this.load.multiatlas('objects', 'map-objects.json');
+
+    this.load.json('map_data', 'map_data.json');
   }
 
   create() {
