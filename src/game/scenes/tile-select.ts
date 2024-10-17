@@ -99,12 +99,11 @@ export class TileSelect extends Phaser.Scene {
       ).indexOf(this.selectedItemFrameName);
       this.unselectItemByIndex(previousIndex);
     }
+    this.events.emit('tabChanged', tabName);
 
     this.currentTab = tabName;
     this.updateTabAppearance();
     this.updateGridVisibility();
-
-    this.events.emit('tabChanged', tabName);
 
     this.selectedItemFrameName = null;
     this.selectedItem = null;
@@ -114,10 +113,14 @@ export class TileSelect extends Phaser.Scene {
   updateTabAppearance() {
     this.tabButtons.children.forEach((button: any, index: number) => {
       if (button.text) {
+        console.log(index, this.currentTab);
         const isActive =
           (index === 0 && this.currentTab === 'tiles') ||
           (index === 1 && this.currentTab === 'objects');
-        button.getElement('background').setFillStyle(isActive ? 0x4a5460 : 0x2a323c);
+
+        const background = button.getElement('background');
+
+        background.setFillStyle(isActive ? 0x4a5460 : 0x2a323c);
       }
     });
   }
@@ -491,8 +494,8 @@ export class TileSelect extends Phaser.Scene {
   onTabButtonHover(button: any) {
     const background = button.getElement('background');
     const isActive =
-      (button.text.text === 'Tiles' && this.currentTab === 'tiles') ||
-      (button.text.text === 'Objects' && this.currentTab === 'objects');
+      (button.text === 'Tiles' && this.currentTab === 'tiles') ||
+      (button.text === 'Objects' && this.currentTab === 'objects');
 
     if (!isActive) {
       background.setFillStyle(0x373f4a);
@@ -502,8 +505,8 @@ export class TileSelect extends Phaser.Scene {
   onTabButtonOut(button: any) {
     const background = button.getElement('background');
     const isActive =
-      (button.text.text === 'Tiles' && this.currentTab === 'tiles') ||
-      (button.text.text === 'Objects' && this.currentTab === 'objects');
+      (button.text === 'Tiles' && this.currentTab === 'tiles') ||
+      (button.text === 'Objects' && this.currentTab === 'objects');
 
     if (!isActive) {
       background.setFillStyle(0x2a323c);
