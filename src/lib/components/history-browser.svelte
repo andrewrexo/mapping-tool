@@ -29,14 +29,19 @@
   </div>
 {/snippet}
 
-<Button id="history-popover" class="bg-neutral" pill={true}>
+<Button
+  id="history-popover"
+  class="bg-neutral hover:scale-[1.025] transition-all duration-300"
+  pill={true}
+  disabled={actions.length === 0}
+>
   <iconify-icon icon="mdi:history"></iconify-icon>
 </Button>
 <Popover
   triggeredBy="#history-popover"
   position="bottom-end"
   arrow={false}
-  class="bg-neutral border-base-100 border-2 overflow-y-auto max-h-[300px] min-w-[300px] mt-2 grid grid-cols-1"
+  class="bg-neutral/80 border-0 backdrop-blur-sm overflow-y-auto max-h-[300px] min-w-[360px] mt-2 grid grid-cols-1"
   titleSlot={popoverTitle}
 >
   {#each actions as action, index}

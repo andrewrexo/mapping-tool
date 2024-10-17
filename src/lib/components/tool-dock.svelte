@@ -67,7 +67,7 @@
   aria-label="Tool Dock"
   tabindex="-1"
   color="gray"
-  class="draggable transition-all duration-200 mx-auto w-[50px] p-2 flex gap-2 border-none ring-none {isVertical
+  class="draggable transition-all mt-[1px] duration-200 mx-auto w-[50px] p-2 flex gap-2 border-none ring-none {isVertical
     ? 'flex-col w-[40px]'
     : 'flex-row w-fit h-[41px]'}"
   style={draggable.left === 0 && draggable.top === 0

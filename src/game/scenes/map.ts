@@ -84,14 +84,18 @@ export class Map extends Scene {
     EventBus.on('undo', this.undo, this);
     EventBus.on('redo', this.redo, this);
     EventBus.on('batchUndo', this.handleBatchUndo, this);
-    EventBus.on('exportMap', this.exportMap.bind(this));
+    EventBus.on('exportMap', this.exportMap, this);
   }
 
-  exportMap() {
-    saveMap(this.mapSize, [
-      this.groundTiles.filter(Boolean) as Phaser.GameObjects.Image[][],
-      this.objectMap.filter(Boolean) as Phaser.GameObjects.Image[][]
-    ]);
+  exportMap(callback: () => void) {
+    saveMap(
+      this.mapSize,
+      [
+        this.groundTiles.filter(Boolean) as Phaser.GameObjects.Image[][],
+        this.objectMap.filter(Boolean) as Phaser.GameObjects.Image[][]
+      ],
+      callback
+    );
   }
 
   initializeEmptyMap() {

@@ -4,8 +4,8 @@
   import ToolDock from '$lib/components/tool-dock.svelte';
   import HistoryBrowser from '$lib/components/history-browser.svelte';
   import { Toast, Button } from 'svelte-5-ui-lib';
-  import { fly } from 'svelte/transition';
-  import { cubicInOut } from 'svelte/easing';
+  import { fly, scale } from 'svelte/transition';
+  import { cubicInOut, elasticOut } from 'svelte/easing';
   import { EventBus } from '$lib/services/event-bus';
 
   let { children } = $props();
@@ -13,20 +13,26 @@
   let isDrawerOpen = $state(false);
   let isSaved = $state(false);
   let isModalOpen = $state(false);
+  let showCheck = $state(false);
+
+  let mapName = $state('Untitled Map');
 
   const closeDrawer = () => {
     isDrawerOpen = false;
   };
 
   const handleTitleClick = () => {
-    if (isSaved) {
-      return;
-    }
+    if (isSaved) return;
 
-    EventBus.emit('exportMap');
+    EventBus.emit('exportMap', () => {
+      isSaved = true;
+      showCheck = true;
 
-    isSaved = !isSaved;
-    isModalOpen = true;
+      setTimeout(() => {
+        showCheck = false;
+        isSaved = false;
+      }, 2000);
+    });
   };
 
   const handleKeydown = (event: KeyboardEvent) => {
@@ -63,20 +69,43 @@
 <div class="layout">
   <header class="py-2 px-2 border-b border-neutral flex justify-between items-center">
     <div class="flex items-center justify-center gap-8">
-      <Button pill={true} class="gap-2" color="gray" onclick={handleTitleClick}>
-        <iconify-icon icon="mdi:content-save"></iconify-icon>
-        Untitled Map
+      <Button
+        class="bg-neutral gap-2 w-32 h-10 relative overflow-hidden save-button transition-all duration-300 hover:scale-[1.025] hover:shadow-lg"
+        style="box-shadow: 0 0 0 0 transparent;"
+        color="green"
+        pill={true}
+        onclick={handleTitleClick}
+      >
+        {#if !showCheck}
+          <iconify-icon
+            icon="mdi:content-save"
+            transition:scale={{ duration: 300, easing: cubicInOut }}
+          ></iconify-icon>
+          <span transition:scale={{ duration: 300, easing: cubicInOut }}>Save</span>
+        {:else}
+          <div
+            class="absolute inset-0 flex items-center justify-center bg-green-500"
+            transition:scale={{ duration: 500, easing: elasticOut }}
+          >
+            <iconify-icon
+              icon="mdi:check"
+              class="text-white text-2xl"
+              transition:scale={{ delay: 150, duration: 500, easing: elasticOut }}
+            ></iconify-icon>
+          </div>
+        {/if}
       </Button>
       <Toast
         bind:toastStatus={isModalOpen}
         icon={toastIcon}
-        color="gray"
+        iconClass="w-4 h-4"
+        color="green"
         baseClass="p-2 z-10 absolute left-2 top-16 bg-neutral text-neutral-content"
         transition={fly}
         dismissable={false}
-        params={{ duration: 500, easing: cubicInOut, x: 50 }}
+        params={{ duration: 300, easing: cubicInOut, x: 50 }}
       >
-        <b>Untitled Map</b> has been saved
+        <b>{mapName}</b> has been <span class="text-green-500">saved</span> to your disk.
       </Toast>
     </div>
     <HistoryBrowser />
@@ -168,5 +197,9 @@
 
   iconify-icon {
     @apply text-2xl;
+  }
+
+  .save-button {
+    box-shadow: 0 0 0 0 transparent;
   }
 </style>

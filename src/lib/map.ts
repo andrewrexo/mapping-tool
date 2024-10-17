@@ -57,7 +57,7 @@ const makeLayerData = (mapSize: number, ground: GameObject, objects: GameObject)
   return cleanedLayerData;
 };
 
-export const saveMap = (mapSize: number, layers: GameObject[]): MapData => {
+export const saveMap = (mapSize: number, layers: GameObject[], callback: () => void): MapData => {
   const layerData = makeLayerData(mapSize, layers[0], layers[1]);
 
   const mapData: MapData = {
@@ -65,7 +65,7 @@ export const saveMap = (mapSize: number, layers: GameObject[]): MapData => {
     layers: layerData
   };
 
-  downloadJson(mapData, 'map_data');
+  downloadJson(mapData, 'map_data', callback);
   return mapData;
 };
 
