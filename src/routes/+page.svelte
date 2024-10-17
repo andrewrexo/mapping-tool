@@ -1,5 +1,5 @@
 <script lang="ts">
-  import Phaser from '$lib/components/Phaser.svelte';
+  import Phaser from '../game/Phaser.svelte';
 </script>
 
 <Phaser />

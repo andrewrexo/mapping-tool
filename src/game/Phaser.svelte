@@ -9,7 +9,7 @@
 </script>
 
 <script lang="ts">
-  import StartGame from '../../game/main';
+  import StartGame from './main';
 
   let mounted = $state(false);
 
