@@ -263,6 +263,10 @@ export class TileSelect extends Phaser.Scene {
     this.updateGridVisibility();
 
     this.scale.on('resize', this.resize, this);
+
+    if (this.tileGridTable) {
+      this.onCellClick(this.tileGridTable.getCell(0).getContainer()!, 0, 'tiles');
+    }
   }
 
   groupAndFilterFrames(frames: string[]): string[] {
@@ -342,7 +346,7 @@ export class TileSelect extends Phaser.Scene {
     sprite.on('pointerdown', () => this.onCellClick(container, cell.index, type));
 
     if (frame === this.selectedItemFrameName) {
-      this.applyPostFXToSprite(sprite);
+      background.setFillStyle(0xffffff, 0.3);
     }
 
     return container;
@@ -376,20 +380,13 @@ export class TileSelect extends Phaser.Scene {
     }
   }
 
-  applyPostFXToSprite(sprite: Phaser.GameObjects.Sprite) {
-    sprite.postFX.clear();
-    sprite.postFX.addGlow(0xffffff, 0.2, 1, false, 1);
-  }
-
   selectItemByIndex(index: number) {
     const gridTable = this.currentTab === 'tiles' ? this.tileGridTable : this.objectGridTable;
     if (gridTable) {
       const cell = gridTable.getCell(index);
-
       if (cell) {
-        // @ts-ignore
-        const sprite = cell.getContainer()?.list[0] as Phaser.GameObjects.Sprite;
-
+        const container = cell.getContainer() as Phaser.GameObjects.Container;
+        const sprite = container?.list[1] as Phaser.GameObjects.Sprite;
         if (sprite) {
           this.selectItem(sprite);
         }
@@ -484,6 +481,7 @@ export class TileSelect extends Phaser.Scene {
       const index = (this.currentTab === 'tiles' ? this.tileFrames : this.objectFrames).indexOf(
         this.selectedItemFrameName
       );
+
       if (index !== -1) {
         this.selectItemByIndex(index);
       }

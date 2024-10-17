@@ -41,9 +41,14 @@
 	"type": "module",
 	"dependencies": {
 		"@zerodevx/svelte-toast": "^0.9.6",
+		"class-variance-authority": "^0.7.0",
+		"clsx": "^2.1.1",
 		"iconify-icon": "^2.1.0",
 		"lodash": "^4.17.21",
 		"phaser": "^3.86.0",
-		"phaser3-rex-plugins": "^1.80.8"
+		"phaser3-rex-plugins": "^1.80.8",
+		"svelte-5-ui-lib": "^0.9.21",
+		"svelte-motion": "^0.12.2",
+		"tailwind-merge": "^2.5.4"
 	}
 }
