@@ -1,7 +1,8 @@
 <script lang="ts">
-  import { Popover, Button, List, Li } from 'svelte-5-ui-lib';
+  import { Popover, Button } from 'svelte-5-ui-lib';
   import { history } from '$lib/state/history.svelte';
   import { getActionDescription } from '$lib/actions';
+  import { EventBus } from '$lib/services/event-bus';
 
   let actions = $derived.by(() => {
     const historyLength = history.past.length;
@@ -12,31 +13,42 @@
 
     return result.reverse();
   });
+
+  const handleRollback = (index: number) => {
+    const actionsToUndo = history.rollbackTo(history.past.length - 1 - index);
+
+    if (actionsToUndo) {
+      EventBus.emit('batchUndo', actionsToUndo);
+    }
+  };
 </script>
 
 {#snippet popoverTitle()}
   <div class="flex items-center space-x-2 p-2 rtl:space-x-reverse">
-    <p class="text-sm text-slate-200">Recent Actions</p>
+    <p class="popover-title">Recent actions</p>
   </div>
 {/snippet}
 
-<Button id="history-popover" color="gray" pill={true} class="">
+<Button id="history-popover" class="bg-neutral" pill={true}>
   <iconify-icon icon="mdi:history"></iconify-icon>
 </Button>
 <Popover
   triggeredBy="#history-popover"
   position="bottom-end"
   arrow={false}
-  class="bg-neutral border-base-100 border-2 overflow-y-auto max-h-[300px] mt-2"
+  class="bg-neutral border-base-100 border-2 overflow-y-auto max-h-[300px] min-w-[300px] mt-2 grid grid-cols-1"
   titleSlot={popoverTitle}
 >
-  {#each actions as action}
-    <span>
-      <div
-        class="flex items-center space-x-4 p-2 rtl:space-x-reverse text-slate-400 hover:bg-slate-700 border-t-2 border-b-1 border-slate-600 select-none"
-      >
+  {#each actions as action, index}
+    <button
+      onclick={() => {
+        handleRollback(index);
+      }}
+      class="popover-item"
+    >
+      <div class="flex items-center gap-2">
         {#if action.type === 'tile'}
-          <iconify-icon icon="vaadin:paintbrush"></iconify-icon>
+          <iconify-icon icon="ic:twotone-draw"></iconify-icon>
         {:else if action.type === 'object'}
           <iconify-icon icon="mdi:square-rounded"></iconify-icon>
         {:else if action.type === 'fill'}
@@ -48,11 +60,15 @@
         {:else}
           ❓
         {/if}
-        <p class="text-sm truncate text-slate-300">
+        <p class="truncate text-slate-300">
           {getActionDescription(action)}
         </p>
       </div>
-    </span>
+      <span class="text-right text-sm text-slate-400 flex items-center inset-y-4 flex-col">
+        <iconify-icon icon="mdi:undo"></iconify-icon>
+        undo
+      </span>
+    </button>
   {/each}
   {#if actions.length === 0}
     <p class="text-sm text-gray-500 dark:text-gray-400 p-2">No actions yet</p>
@@ -61,6 +77,19 @@
 
 <style lang="postcss">
   iconify-icon {
-    @apply text-xl;
+    @apply text-2xl;
+  }
+
+  .popover-item iconify-icon {
+    @apply text-2xl;
+  }
+
+  .popover-title {
+    font-size: 1rem;
+    @apply font-bold text-slate-300;
+  }
+
+  .popover-item {
+    @apply flex gap-2 justify-between items-center p-2 text-slate-400 hover:bg-slate-700 select-none;
   }
 </style>

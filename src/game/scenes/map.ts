@@ -82,6 +82,7 @@ export class Map extends Scene {
 
     EventBus.on('undo', this.undo, this);
     EventBus.on('redo', this.redo, this);
+    EventBus.on('batchUndo', this.handleBatchUndo, this);
   }
 
   initializeEmptyMap() {
@@ -634,5 +635,57 @@ export class Map extends Scene {
   shutdown() {
     EventBus.off('undo', this.undo, this);
     EventBus.off('redo', this.redo, this);
+    EventBus.off('batchUndo', this.handleBatchUndo, this);
+  }
+
+  handleBatchUndo = (actionsToUndo: HistoryAction[]) => {
+    actionsToUndo.forEach((action) => {
+      switch (action.type) {
+        case 'tile':
+          this.undoTileAction(action);
+          break;
+        case 'object':
+          this.undoObjectAction(action);
+          break;
+        case 'fill':
+          this.undoFillAction(action);
+          break;
+      }
+    });
+
+    this.updateWorldState();
+  };
+
+  undoTileAction(action: HistoryAction) {
+    if (action.x !== undefined && action.y !== undefined && action.oldValue !== undefined) {
+      // Restore the old tile value
+      this.applyTileChange(
+        this.groundTiles[action.y][action.x],
+        action.oldValue,
+        action.oldAlpha ?? 1
+      );
+    }
+  }
+
+  undoObjectAction(action: HistoryAction) {
+    if (action.x !== undefined && action.y !== undefined) {
+      this.applyObjectChange(action.x, action.y, action.oldValue ?? null);
+    }
+  }
+
+  undoFillAction(action: HistoryAction) {
+    if (action.changes) {
+      action.changes.forEach((change) => {
+        this.applyTileChange(
+          this.groundTiles[change.y][change.x],
+          change.oldValue,
+          change.oldAlpha
+        );
+      });
+    }
+  }
+
+  updateWorldState() {
+    this.drawGrid();
   }
 }

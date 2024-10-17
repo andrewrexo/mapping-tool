@@ -47,6 +47,15 @@ function createHistoryState() {
     return action;
   }
 
+  function rollbackTo(index: number) {
+    if (index < 0 || index >= past.length) return;
+    const actionsToUndo = past.slice(index + 1);
+    future = [...actionsToUndo.reverse(), ...future];
+    past = past.slice(0, index + 1);
+    lastAction = { type: 'undo', undoneAction: actionsToUndo[0] };
+    return actionsToUndo;
+  }
+
   return {
     get past() {
       return past;
@@ -60,6 +69,7 @@ function createHistoryState() {
     addAction,
     undo,
     redo,
+    rollbackTo,
     canUndo: () => past.length > 0,
     canRedo: () => future.length > 0
   };

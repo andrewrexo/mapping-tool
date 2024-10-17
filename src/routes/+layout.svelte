@@ -162,4 +162,8 @@
     justify-content: center;
     align-items: center;
   }
+
+  iconify-icon {
+    @apply text-2xl;
+  }
 </style>
