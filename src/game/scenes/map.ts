@@ -29,6 +29,8 @@ export class Map extends Scene {
   private grid: Phaser.GameObjects.Graphics | null = null;
   private lastAppliedTile: { x: number; y: number } | null = null;
   private animationManager: GlobalAnimationManager;
+  private previewTile: Phaser.GameObjects.Sprite | null = null;
+  private previewObject: Phaser.GameObjects.Image | null = null;
 
   constructor() {
     super({ key: 'map' });
@@ -109,7 +111,8 @@ export class Map extends Scene {
         const worldPos = this.getTilePosition(x, y);
         const tile = this.add.sprite(worldPos.x, worldPos.y, 'tiles', '101');
         tile.setOrigin(0.5, 0.5);
-        tile.setAlpha(0);
+        tile.setAlpha(0.001);
+        tile.setDepth(this.layers[0].depthOffset + worldPos.y);
         this.groundTiles[y][x] = tile;
 
         tile
@@ -120,10 +123,27 @@ export class Map extends Scene {
           .on('pointerover', () => {
             if (this.input.activePointer.isDown) {
               this.applyTool(x, y);
+            } else {
+              this.showPreview(x, y);
             }
+          })
+          .on('pointerout', () => {
+            this.hidePreview();
           });
       }
     }
+
+    const centerPos = this.getTilePosition(0, 0);
+    this.previewTile = this.add.sprite(centerPos.x, centerPos.y, 'tiles', '101');
+    this.previewTile.setVisible(false);
+    this.previewTile.setAlpha(0.5);
+    this.previewTile.setDepth(this.layers[0].depthOffset + 1);
+
+    this.previewObject = this.add.image(centerPos.x, centerPos.y, 'objects', '101');
+    this.previewObject.setOrigin(0, 1);
+    this.previewObject.setVisible(false);
+    this.previewObject.setAlpha(0.5);
+    this.previewObject.setDepth(this.layers[1].depthOffset - 1);
   }
 
   launchNativeUI() {
@@ -199,6 +219,9 @@ export class Map extends Scene {
                 if (this.input.activePointer.isDown) {
                   this.applyTool(colIndex, rowIndex);
                 }
+              })
+              .on('pointerout', () => {
+                this.hidePreview();
               });
 
             // store the ground tile in our groundTiles array
@@ -210,9 +233,10 @@ export class Map extends Scene {
             entity = this.add.image(worldPos.x, worldPos.y, 'objects', tileId);
             entity.setOrigin(0, 1);
 
-            entity.y += 12;
-            entity.x -= Math.floor(entity.width / 2);
-            entity.x -= layer.renderOffset.x;
+            entity.setPosition(
+              worldPos.x - Math.floor(entity.width / 2) - this.objectLayer.renderOffset.x,
+              worldPos.y + 12
+            );
 
             entity.setDepth(layer.depthOffset + entity.y);
 
@@ -299,6 +323,7 @@ export class Map extends Scene {
     this.currentTile = frameName.split('_')[0];
     this.currentObject = null;
     this.currentLayer = tab;
+    this.hidePreview();
   };
 
   handleObjectSelected = ({ frameName, tab }: { frameName: string; tab: 'tiles' | 'objects' }) => {
@@ -306,11 +331,13 @@ export class Map extends Scene {
     this.currentObject = frameName;
     this.currentTile = null;
     this.currentLayer = tab;
+    this.hidePreview();
   };
 
   handleTabChanged = (tab: 'tiles' | 'objects') => {
     console.log(`Tab changed to: ${tab}`);
     this.currentLayer = tab;
+    this.hidePreview();
   };
 
   placeTile(tileX: number, tileY: number) {
@@ -398,6 +425,7 @@ export class Map extends Scene {
         }
         break;
     }
+    this.hidePreview();
   }
 
   eraseTile(tileX: number, tileY: number) {
@@ -529,8 +557,11 @@ export class Map extends Scene {
     if (valueToApply) {
       const worldPos = this.getTilePosition(x, y);
       const object = this.add.image(worldPos.x, worldPos.y, 'objects', valueToApply);
-      object.setOrigin(0.5, 1);
-      object.y += tileProperties.tileHeight / 2;
+      object.setOrigin(0, 1);
+      object.setPosition(
+        worldPos.x - Math.floor(this.previewObject!.width / 2) - this.objectLayer.renderOffset.x,
+        worldPos.y + 12
+      );
       object.setDepth(this.objectLayer.depthOffset + worldPos.y);
       this.objectMap[y][x] = object;
     }
@@ -702,5 +733,46 @@ export class Map extends Scene {
 
   updateWorldState() {
     this.drawGrid();
+  }
+
+  showPreview(tileX: number, tileY: number) {
+    const worldPos = this.getTilePosition(tileX, tileY);
+
+    if (this.currentLayer === 'tiles' && this.currentTile) {
+      this.previewTile!.setPosition(worldPos.x, worldPos.y);
+      this.previewTile!.setTexture('tiles', this.currentTile);
+      this.previewTile!.setVisible(true);
+      this.previewTile!.setAlpha(0.5);
+      this.previewTile!.setDepth(this.layers[0].depthOffset + worldPos.y + 10000);
+
+      if (this.previewObject) {
+        this.previewObject.setVisible(false);
+      }
+    } else if (this.currentLayer === 'objects' && this.currentObject) {
+      this.previewObject!.setTexture('objects', this.currentObject);
+      this.previewObject!.setVisible(true);
+      this.previewObject!.setAlpha(0.5);
+      this.previewObject!.setOrigin(0, 1);
+      this.previewObject!.setPosition(
+        worldPos.x - Math.floor(this.previewObject!.width / 2) - this.objectLayer.renderOffset.x,
+        worldPos.y + 12
+      );
+      this.previewObject!.setDepth(this.objectLayer.depthOffset + worldPos.y - 1);
+
+      if (this.previewTile) {
+        this.previewTile.setVisible(false);
+      }
+    } else {
+      this.hidePreview();
+    }
+  }
+
+  hidePreview() {
+    if (this.previewTile) {
+      this.previewTile.setVisible(false);
+    }
+    if (this.previewObject) {
+      this.previewObject.setVisible(false);
+    }
   }
 }

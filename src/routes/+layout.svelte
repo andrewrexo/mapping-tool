@@ -198,8 +198,4 @@
   iconify-icon {
     @apply text-2xl;
   }
-
-  .save-button {
-    box-shadow: 0 0 0 0 transparent;
-  }
 </style>
