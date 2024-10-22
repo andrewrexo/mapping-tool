@@ -1,38 +1,52 @@
-# create-svelte
+# Isometric Map Editor
 
-Everything you need to build a Svelte project, powered by [`create-svelte`](https://github.com/sveltejs/kit/tree/main/packages/create-svelte).
+A powerful and intuitive map editor built with Svelte 5 and Phaser 3. This tool allows users to create, edit, and export custom isometric maps for game development or other creative projects.
 
-## Creating a project
+## Features
 
-If you're seeing this, you've probably already done this step. Congrats!
+- Multiple layers support
+- Tile animations
+- Undo/Redo functionality
+- Map export and import with support for .json format.
+- Customizable tools (Brush, Eraser, Fill)
+- Responsive design & mobile friendly.
 
-```bash
-# create a new project in the current directory
-npm create svelte@latest
+## Getting Started
 
-# create a new project in my-app
-npm create svelte@latest my-app
-```
+### Prerequisites
 
-## Developing
+- bun `curl -fsSL https://bun.sh/install | bash`
+- art assets / isometric tilesets & objects
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+### Installation
 
-```bash
-npm run dev
+1. Clone the repository:
 
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
-```
+   ```
+   git clone https://github.com/andrewrexo/mapping-tool.git
+   cd map-editor
+   ```
 
-## Building
+2. Install dependencies:
 
-To create a production version of your app:
+   ```
+   bun install
+   ```
 
-```bash
-npm run build
-```
+3. Start the development server:
 
-You can preview the production build with `npm run preview`.
+   ```
+   bun dev
+   ```
 
-> To deploy your app, you may need to install an [adapter](https://kit.svelte.dev/docs/adapters) for your target environment.
+4. Open your browser and navigate to `http://localhost:5173`
+
+## Development
+
+This project uses the Svelte 5 (now out of RC!) with runes syntax for UI components, and Phaser 3 for all canvas-relate functionality.
+
+Key files and directories:
+
+- `src/game/`: Contains Phaser scenes and game logic
+- `src/lib/`: Reusable components and utilities
+- `src/routes/`: Svelte routes and pages
