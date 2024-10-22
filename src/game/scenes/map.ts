@@ -267,23 +267,31 @@ export class Map extends Scene {
     tile.play(animKey);
   }
 
-  update(time: number, delta: number) {
+  updateAnimation(tile: Phaser.GameObjects.Sprite) {
+    if (tile && tile.anims && tile.anims.isPlaying) {
+      const progress = this.animationManager.getProgress();
+      const totalFrames = tile.anims.getTotalFrames();
+      const currentFrame = Math.floor(progress * totalFrames);
+      if (tile.anims.currentAnim) {
+        tile.setFrame(tile.anims.currentAnim.frames[currentFrame].frame.name);
+      }
+    }
+  }
+
+  update(_time: number, delta: number) {
     this.handleCameraMovement();
     this.animationManager.update(delta);
 
     // Update all animated tiles
     this.groundTiles.forEach((row) => {
       row.forEach((tile) => {
-        if (tile && tile.anims && tile.anims.isPlaying) {
-          const progress = this.animationManager.getProgress();
-          const totalFrames = tile.anims.getTotalFrames();
-          const currentFrame = Math.floor(progress * totalFrames);
-          if (tile.anims.currentAnim) {
-            tile.setFrame(tile.anims.currentAnim.frames[currentFrame].frame.name);
-          }
-        }
+        this.updateAnimation(tile);
       });
     });
+
+    if (this.previewTile) {
+      this.updateAnimation(this.previewTile);
+    }
   }
 
   handleCameraMovement() {
@@ -809,6 +817,10 @@ export class Map extends Scene {
       this.previewTile!.setAlpha(0.5);
       this.previewTile!.setDepth(this.layers[0].depthOffset + worldPos.y + 10000);
 
+      const baseTileId = this.currentTile.split('_')[0];
+      const animKey = `anim_${baseTileId}`;
+
+      this.previewTile?.play(animKey);
       if (this.previewObject) {
         this.previewObject.setVisible(false);
       }
