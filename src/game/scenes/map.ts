@@ -511,17 +511,19 @@ export class Map extends Scene {
   fillArea(startX: number, startY: number) {
     if (!this.currentTile) return;
 
-    const targetTileFrame = this.groundTiles[startY][startX].frame.name;
+    const targetTile = this.groundTiles[startY][startX];
+    const targetTileFrame = targetTile ? targetTile.frame.name : null;
+    const targetTileAlpha = targetTile ? targetTile.alpha : 0;
     const newTileFrame = this.currentTile;
 
-    if (targetTileFrame === newTileFrame) return;
+    if (targetTileFrame === newTileFrame && targetTileAlpha === 1) return;
 
     const stack: [number, number][] = [[startX, startY]];
     const visited: Set<string> = new Set();
     const fillChanges: {
       x: number;
       y: number;
-      oldValue: string;
+      oldValue: string | null;
       newValue: string;
       oldAlpha: number;
       newAlpha: number;
@@ -537,19 +539,46 @@ export class Map extends Scene {
         y < 0 ||
         y >= this.mapSize ||
         visited.has(key) ||
-        this.groundTiles[y][x].frame.name !== targetTileFrame
+        (this.groundTiles[y][x] &&
+          (this.groundTiles[y][x].frame.name !== targetTileFrame ||
+            this.groundTiles[y][x].alpha !== targetTileAlpha))
       ) {
         continue;
       }
 
+      const currentTile = this.groundTiles[y][x];
       fillChanges.push({
         x,
         y,
-        oldValue: this.groundTiles[y][x].frame.name,
+        oldValue: currentTile ? currentTile.frame.name : null,
         newValue: newTileFrame,
-        oldAlpha: this.groundTiles[y][x].alpha,
+        oldAlpha: currentTile ? currentTile.alpha : 0,
         newAlpha: 1
       });
+
+      if (!currentTile) {
+        const worldPos = this.getTilePosition(x, y);
+        const newTile = this.add.sprite(worldPos.x, worldPos.y, 'tiles', newTileFrame);
+        newTile.setOrigin(0.5, 0.5);
+        newTile.setDepth(this.layers[0].depthOffset + worldPos.y);
+        this.groundTiles[y][x] = newTile;
+
+        newTile
+          .setInteractive(this.input.makePixelPerfect())
+          .on('pointerdown', () => {
+            this.applyTool(x, y);
+          })
+          .on('pointerover', () => {
+            if (this.input.activePointer.isDown) {
+              this.applyTool(x, y);
+            } else {
+              this.showPreview(x, y);
+            }
+          })
+          .on('pointerout', () => {
+            this.hidePreview();
+          });
+      }
 
       this.applyTileChange(this.groundTiles[y][x], newTileFrame, 1);
       visited.add(key);
