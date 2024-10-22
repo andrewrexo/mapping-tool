@@ -1,6 +1,10 @@
 # Isometric Map Editor
 
-A powerful and intuitive map editor built with Svelte 5 and Phaser 3. This tool allows users to create, edit, and export custom isometric maps for game development or other creative projects.
+A powerful and intuitive map editor built with Svelte 5 and Phaser 3 using Typescript. This tool allows users to create, edit, and export custom isometric maps for game development or other creative projects.
+
+### Preview:
+<img width="500" alt="image" src="https://github.com/user-attachments/assets/d246aa2d-5ac5-4d83-a81f-1b3f6cbfab27">
+
 
 ## Features
 
