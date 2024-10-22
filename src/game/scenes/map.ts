@@ -354,10 +354,30 @@ export class Map extends Scene {
 
   placeTile(tileX: number, tileY: number) {
     if (this.currentTile) {
-      const existingTile = this.groundTiles[tileY][tileX];
+      let existingTile = this.groundTiles[tileY][tileX];
       if (!existingTile) {
-        console.warn(`No tile found at position ${tileX}, ${tileY}`);
-        return;
+        // Create a new tile if one doesn't exist
+        const worldPos = this.getTilePosition(tileX, tileY);
+        existingTile = this.add.sprite(worldPos.x, worldPos.y, 'tiles', '101');
+        existingTile.setOrigin(0.5, 0.5);
+        existingTile.setDepth(this.layers[0].depthOffset + worldPos.y);
+        this.groundTiles[tileY][tileX] = existingTile;
+
+        existingTile
+          .setInteractive(this.input.makePixelPerfect())
+          .on('pointerdown', () => {
+            this.applyTool(tileX, tileY);
+          })
+          .on('pointerover', () => {
+            if (this.input.activePointer.isDown) {
+              this.applyTool(tileX, tileY);
+            } else {
+              this.showPreview(tileX, tileY);
+            }
+          })
+          .on('pointerout', () => {
+            this.hidePreview();
+          });
       }
 
       const currentFrame = existingTile.frame ? existingTile.frame.name : null;
