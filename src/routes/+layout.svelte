@@ -4,9 +4,10 @@
   import ToolDock from '$lib/components/tool-dock.svelte';
   import HistoryBrowser from '$lib/components/history-browser.svelte';
   import { Toast, Button } from 'svelte-5-ui-lib';
-  import { fly, scale } from 'svelte/transition';
+  import { fly, scale, fade } from 'svelte/transition';
   import { cubicInOut, elasticOut } from 'svelte/easing';
   import { EventBus } from '$lib/services/event-bus';
+  import MapUpload from '$lib/components/map-upload.svelte';
 
   let { children } = $props();
 
@@ -14,6 +15,8 @@
   let isSaved = $state(false);
   let isModalOpen = $state(false);
   let showCheck = $state(false);
+  let isUploadModalOpen = $state(false);
+  let showUploadCheck = $state(false);
 
   let mapName = $state('Untitled Map');
 
@@ -39,6 +42,19 @@
     if (event.key === 'Escape') {
       closeDrawer();
     }
+  };
+
+  const openUploadModal = () => {
+    isUploadModalOpen = true;
+  };
+
+  const closeUploadModal = () => {
+    isUploadModalOpen = false;
+    showUploadCheck = true;
+
+    setTimeout(() => {
+      showUploadCheck = false;
+    }, 2000);
   };
 
   $effect(() => {
@@ -68,7 +84,7 @@
 
 <div class="layout">
   <header class="py-2 px-2 border-b border-neutral flex justify-between items-center">
-    <div class="flex items-center justify-center gap-8">
+    <div class="flex items-center justify-center gap-2">
       <Button
         class="bg-neutral gap-2 w-32 h-10 relative overflow-hidden save-button transition-all duration-300 hover:scale-[1.025] hover:shadow-lg"
         style="box-shadow: 0 0 0 0 transparent;"
@@ -95,6 +111,35 @@
           </div>
         {/if}
       </Button>
+      <div class="flex justify-center">
+        <Button
+          pill={true}
+          class="bg-neutral gap-2 w-32 h-10 relative overflow-hidden upload-button transition-all duration-300 hover:scale-[1.025] hover:shadow-lg"
+          style="box-shadow: 0 0 0 0 transparent;"
+          onclick={openUploadModal}
+        >
+          {#if !showUploadCheck}
+            {#if isUploadModalOpen}
+              <iconify-icon icon="mdi:loading" class="animate-spin"></iconify-icon>
+            {:else}
+              <iconify-icon icon="mdi:upload" in:scale={{ duration: 300, easing: cubicInOut }}
+              ></iconify-icon>
+            {/if}
+            <span transition:scale={{ duration: 300, easing: cubicInOut }}>Upload</span>
+          {:else}
+            <div
+              class="absolute inset-0 flex items-center justify-center bg-orange-500"
+              transition:scale={{ duration: 500, easing: elasticOut }}
+            >
+              <iconify-icon
+                icon="mdi:file-check"
+                class="text-white text-2xl"
+                transition:fade={{ delay: 150, duration: 300 }}
+              ></iconify-icon>
+            </div>
+          {/if}
+        </Button>
+      </div>
       <Toast
         bind:toastStatus={isModalOpen}
         icon={toastIcon}
@@ -110,6 +155,31 @@
     </div>
     <HistoryBrowser />
   </header>
+
+  {#if isUploadModalOpen}
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <div
+      role="button"
+      tabindex="0"
+      class="fixed inset-0 bg-black/40 z-50"
+      onclick={closeUploadModal}
+      transition:fade={{ duration: 300 }}
+    >
+      <div
+        class="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"
+        onclick={(e) => e.stopPropagation()}
+        role="button"
+        tabindex="0"
+      >
+        <div
+          class="bg-base-100 rounded-lg shadow-xl min-w-[300px]"
+          transition:scale={{ duration: 300, easing: cubicInOut }}
+        >
+          <MapUpload closeModal={closeUploadModal} />
+        </div>
+      </div>
+    </div>
+  {/if}
 
   <div class="drawer drawer-end">
     <input id="nav-drawer" type="checkbox" class="drawer-toggle" bind:checked={isDrawerOpen} />

@@ -64,9 +64,6 @@ export class Map extends Scene {
   }
 
   create() {
-    // Initialize empty ground tiles
-    // this.initializeEmptyMap();
-
     const mapData = this.cache.json.get('map_data');
 
     this.drawMap(mapData.layers[0].tiles, this.layers[0]);
@@ -91,6 +88,9 @@ export class Map extends Scene {
     EventBus.on('redo', this.redo, this);
     EventBus.on('batchUndo', this.handleBatchUndo, this);
     EventBus.on('exportMap', this.exportMap, this);
+    EventBus.on('loadMap', this.loadMapFromData, this);
+
+    this.cameras.main.fadeIn(500);
   }
 
   exportMap(callback: () => void) {
@@ -274,7 +274,7 @@ export class Map extends Scene {
     // Update all animated tiles
     this.groundTiles.forEach((row) => {
       row.forEach((tile) => {
-        if (tile.anims.isPlaying) {
+        if (tile && tile.anims && tile.anims.isPlaying) {
           const progress = this.animationManager.getProgress();
           const totalFrames = tile.anims.getTotalFrames();
           const currentFrame = Math.floor(progress * totalFrames);
@@ -355,12 +355,17 @@ export class Map extends Scene {
   placeTile(tileX: number, tileY: number) {
     if (this.currentTile) {
       const existingTile = this.groundTiles[tileY][tileX];
-      const currentFrame = existingTile.frame.name;
+      if (!existingTile) {
+        console.warn(`No tile found at position ${tileX}, ${tileY}`);
+        return;
+      }
+
+      const currentFrame = existingTile.frame ? existingTile.frame.name : null;
       const newFrame = this.currentTile;
       const oldAlpha = existingTile.alpha;
       const newAlpha = 1;
 
-      if (currentFrame.split('_')[0] === newFrame.split('_')[0]) {
+      if (currentFrame && currentFrame.split('_')[0] === newFrame.split('_')[0]) {
         if (oldAlpha === newAlpha) {
           return;
         }
@@ -368,24 +373,22 @@ export class Map extends Scene {
 
       console.log(`Placing tile ${newFrame} at ${tileX}, ${tileY}`);
 
-      if (existingTile.frame) {
-        const oldValue = currentFrame;
-        const newValue = newFrame;
+      const oldValue = currentFrame;
+      const newValue = newFrame;
 
-        history.addAction({
-          type: 'tile',
-          x: tileX,
-          y: tileY,
-          oldValue,
-          newValue,
-          oldAlpha,
-          newAlpha,
-          layer: 0,
-          tool: tools.currentTool
-        });
+      history.addAction({
+        type: 'tile',
+        x: tileX,
+        y: tileY,
+        oldValue,
+        newValue,
+        oldAlpha,
+        newAlpha,
+        layer: 0,
+        tool: tools.currentTool
+      });
 
-        this.applyTileChange(existingTile, newValue, newAlpha);
-      }
+      this.applyTileChange(existingTile, newValue, newAlpha);
     }
   }
 
@@ -542,7 +545,7 @@ export class Map extends Scene {
   }
 
   applyTileChange(tile: Phaser.GameObjects.Sprite, newValue: string, alpha: number) {
-    const baseTileId = newValue.split('_')[0]; // Extract base tile ID
+    const baseTileId = newValue.split('_')[0];
     tile.setTexture('tiles', baseTileId);
     tile.setVisible(true);
     tile.setAlpha(alpha);
@@ -552,7 +555,6 @@ export class Map extends Scene {
       const animKey = createTileAnimation(this, baseTileId);
       if (this.anims.exists(animKey)) {
         tile.play(animKey);
-        // Don't pause the animation
       }
     } else {
       tile.stop();
@@ -694,6 +696,7 @@ export class Map extends Scene {
     EventBus.off('undo', this.undo, this);
     EventBus.off('redo', this.redo, this);
     EventBus.off('batchUndo', this.handleBatchUndo, this);
+    EventBus.off('loadMap', this.loadMapFromData, this);
   }
 
   handleBatchUndo = (actionsToUndo: HistoryAction[]) => {
@@ -786,5 +789,47 @@ export class Map extends Scene {
     if (this.previewObject) {
       this.previewObject.setVisible(false);
     }
+  }
+
+  loadMapFromData = (mapData: any) => {
+    this.clearMap();
+    this.mapSize = mapData.size;
+
+    this.groundTiles = Array(this.mapSize)
+      .fill(null)
+      .map(() => Array(this.mapSize).fill(null));
+    this.objectMap = Array(this.mapSize)
+      .fill(null)
+      .map(() => Array(this.mapSize).fill(null));
+
+    if (mapData.layers[0] && mapData.layers[0].tiles) {
+      this.drawMap(mapData.layers[0].tiles, this.layers[0]);
+    }
+    if (mapData.layers[1] && mapData.layers[1].tiles) {
+      this.drawMap(mapData.layers[1].tiles, this.layers[1]);
+    }
+
+    this.drawGrid();
+    this.centerCamera();
+
+    this.updateWorldState();
+
+    this.cameras.main.fadeIn(500);
+  };
+
+  clearMap() {
+    if (this.groundTiles) {
+      this.groundTiles.forEach((row) => row.forEach((tile) => tile && tile.destroy()));
+    }
+    this.groundTiles = Array(this.mapSize)
+      .fill(null)
+      .map(() => Array(this.mapSize).fill(null));
+
+    if (this.objectMap) {
+      this.objectMap.forEach((row) => row.forEach((obj) => obj && obj.destroy()));
+    }
+    this.objectMap = Array(this.mapSize)
+      .fill(null)
+      .map(() => Array(this.mapSize).fill(null));
   }
 }
