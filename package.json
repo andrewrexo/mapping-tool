@@ -40,6 +40,7 @@
 	},
 	"type": "module",
 	"dependencies": {
+		"@sveltejs/adapter-static": "^3.0.5",
 		"@zerodevx/svelte-toast": "^0.9.6",
 		"class-variance-authority": "^0.7.0",
 		"clsx": "^2.1.1",
