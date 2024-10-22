@@ -11,8 +11,8 @@ export type HistoryAction = {
   changes?: {
     x: number;
     y: number;
-    oldValue: string;
-    newValue: string;
+    oldValue: string | null;
+    newValue: string | null;
     oldAlpha: number;
     newAlpha: number;
   }[];

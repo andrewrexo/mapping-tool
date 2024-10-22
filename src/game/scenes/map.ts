@@ -716,7 +716,7 @@ export class Map extends Scene {
           const tile = this.groundTiles[change.y][change.x];
           const valueToApply = isUndo ? change.oldValue : change.newValue;
           const alphaToApply = isUndo ? change.oldAlpha : change.newAlpha;
-          this.applyTileChange(tile, valueToApply, alphaToApply);
+          this.applyTileChange(tile, valueToApply ?? '', alphaToApply);
         });
       }
     } else {
@@ -788,7 +788,7 @@ export class Map extends Scene {
       action.changes.forEach((change) => {
         this.applyTileChange(
           this.groundTiles[change.y][change.x],
-          change.oldValue,
+          change.oldValue ?? '',
           change.oldAlpha
         );
       });
