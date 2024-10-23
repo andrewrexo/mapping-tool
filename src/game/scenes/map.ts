@@ -192,6 +192,24 @@ export class Map extends Scene {
     return new Phaser.Math.Vector2(x, y);
   }
 
+  addPointerInteractions(entity: Phaser.GameObjects.Sprite, colIndex: number, rowIndex: number) {
+    entity
+      .setInteractive(this.input.makePixelPerfect())
+      .on('pointerdown', () => {
+        this.applyTool(colIndex, rowIndex);
+      })
+      .on('pointerover', () => {
+        if (this.input.activePointer.isDown) {
+          this.applyTool(colIndex, rowIndex);
+        } else {
+          this.showPreview(colIndex, rowIndex);
+        }
+      })
+      .on('pointerout', () => {
+        this.hidePreview();
+      });
+  }
+
   drawMap(map: any[][], layer: Layer) {
     const { tileWidth, animationFrameCount } = tileProperties;
     const mapWidth = map[0].length;
@@ -218,21 +236,7 @@ export class Map extends Scene {
               this.setupAnimation(entity, tileId.frame);
             }
 
-            entity
-              .setInteractive(this.input.makePixelPerfect())
-              .on('pointerdown', () => {
-                this.applyTool(colIndex, rowIndex);
-              })
-              .on('pointerover', () => {
-                if (this.input.activePointer.isDown) {
-                  this.applyTool(colIndex, rowIndex);
-                } else {
-                  this.showPreview(colIndex, rowIndex);
-                }
-              })
-              .on('pointerout', () => {
-                this.hidePreview();
-              });
+            this.addPointerInteractions(entity, colIndex, rowIndex);
 
             // store the ground tile in our groundTiles array
             this.groundTiles[rowIndex][colIndex] = entity as GameObjects.Sprite;
@@ -473,10 +477,14 @@ export class Map extends Scene {
 
   eraseTile(tileX: number, tileY: number) {
     const existingTile = this.groundTiles[tileY][tileX];
+
+    if (!existingTile) {
+      // No tile to erase, so we can just return
+      return;
+    }
+
     const oldValue = existingTile.frame.name;
     const oldAlpha = existingTile.alpha;
-
-    if (!existingTile) return;
 
     if (existingTile.visible && oldAlpha > 0) {
       history.addAction({
