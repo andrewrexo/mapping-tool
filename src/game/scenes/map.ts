@@ -825,10 +825,15 @@ export class Map extends Scene {
       this.previewTile!.setAlpha(0.5);
       this.previewTile!.setDepth(this.layers[0].depthOffset + worldPos.y + 10000);
 
-      const baseTileId = this.currentTile.split('_')[0];
-      const animKey = `anim_${baseTileId}`;
+      if (
+        this.previewTile &&
+        this.previewTile.width >= tileProperties.tileWidth * tileProperties.animationFrameCount
+      ) {
+        const baseTileId = this.currentTile.split('_')[0];
+        const animKey = `anim_${baseTileId}`;
 
-      this.previewTile?.play(animKey);
+        this.previewTile?.play(animKey);
+      }
       if (this.previewObject) {
         this.previewObject.setVisible(false);
       }
